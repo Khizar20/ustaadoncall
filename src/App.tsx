@@ -10,6 +10,8 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import BecomeProvider from "./pages/BecomeProvider";
 import ProviderProfile from "./pages/ProviderProfile";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +42,8 @@ function AnimatedRoutes() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/become-provider" element={<BecomeProvider />} />
           <Route path="/provider/:id" element={<ProviderProfile />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </motion.div>

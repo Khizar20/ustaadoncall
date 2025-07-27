@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Navigation } from "@/components/ui/navigation";
 import { Footer } from "@/components/ui/footer";
 import { Link } from "react-router-dom";
+import { AnimatedPagination } from "@/components/ui/AnimatedPagination";
 
 const serviceCategories = [
   "All Services",
@@ -85,13 +86,104 @@ const providers = [
     location: "Central",
     experience: "7 years",
     image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face"
+  },
+  // Additional providers for pagination demo
+  {
+    id: 7,
+    name: "Bilal Khan",
+    service: "Plumbing",
+    rating: 4.6,
+    reviews: 65,
+    price: "Starting at $70",
+    location: "Northside",
+    experience: "3 years",
+    image: "https://randomuser.me/api/portraits/men/32.jpg"
+  },
+  {
+    id: 8,
+    name: "Fatima Noor",
+    service: "Beauty & Wellness",
+    rating: 4.9,
+    reviews: 120,
+    price: "Starting at $55",
+    location: "Southside",
+    experience: "6 years",
+    image: "https://randomuser.me/api/portraits/women/44.jpg"
+  },
+  {
+    id: 9,
+    name: "John Smith",
+    service: "Electrical",
+    rating: 4.7,
+    reviews: 110,
+    price: "Starting at $95",
+    location: "Downtown",
+    experience: "10 years",
+    image: "https://randomuser.me/api/portraits/men/45.jpg"
+  },
+  {
+    id: 10,
+    name: "Ayesha Malik",
+    service: "Home Cleaning",
+    rating: 5.0,
+    reviews: 140,
+    price: "Starting at $60",
+    location: "Midtown",
+    experience: "8 years",
+    image: "https://randomuser.me/api/portraits/women/65.jpg"
+  },
+  {
+    id: 11,
+    name: "Imran Qureshi",
+    service: "Car Wash",
+    rating: 4.8,
+    reviews: 90,
+    price: "Starting at $35",
+    location: "Uptown",
+    experience: "5 years",
+    image: "https://randomuser.me/api/portraits/men/77.jpg"
+  },
+  {
+    id: 12,
+    name: "Sara Lee",
+    service: "Appliance Repair",
+    rating: 4.9,
+    reviews: 105,
+    price: "Starting at $85",
+    location: "Central",
+    experience: "9 years",
+    image: "https://randomuser.me/api/portraits/women/12.jpg"
+  },
+  {
+    id: 13,
+    name: "Ali Raza",
+    service: "Plumbing",
+    rating: 4.5,
+    reviews: 50,
+    price: "Starting at $65",
+    location: "Westside",
+    experience: "2 years",
+    image: "https://randomuser.me/api/portraits/men/13.jpg"
+  },
+  {
+    id: 14,
+    name: "Mehwish Tariq",
+    service: "Beauty & Wellness",
+    rating: 5.0,
+    reviews: 130,
+    price: "Starting at $70",
+    location: "Eastside",
+    experience: "7 years",
+    image: "https://randomuser.me/api/portraits/women/22.jpg"
   }
 ];
 
 const Services = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Services");
-  
+  const [page, setPage] = useState(0);
+  const perPage = 12;
+
   const filteredProviders = providers.filter(provider => {
     const matchesSearch = provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          provider.service.toLowerCase().includes(searchTerm.toLowerCase());
@@ -99,6 +191,8 @@ const Services = () => {
     
     return matchesSearch && matchesCategory;
   });
+
+  const paginatedProviders = filteredProviders.slice(page * perPage, (page + 1) * perPage);
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,7 +251,7 @@ const Services = () => {
       <section className="py-12">
         <div className="container mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProviders.map((provider) => (
+            {paginatedProviders.map((provider) => (
               <Card 
                 key={provider.id} 
                 className="overflow-hidden hover:shadow-elegant transition-all duration-300 hover:-translate-y-2 border-border bg-card group"
@@ -201,6 +295,14 @@ const Services = () => {
             ))}
           </div>
           
+          {filteredProviders.length > perPage && (
+            <AnimatedPagination
+              total={filteredProviders.length}
+              perPage={perPage}
+              current={page}
+              onChange={setPage}
+            />
+          )}
           {filteredProviders.length === 0 && (
             <div className="text-center py-16">
               <p className="text-xl text-muted-foreground">No providers found matching your search.</p>

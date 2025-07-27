@@ -213,7 +213,7 @@ const Index = () => {
                     className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 relative overflow-hidden"
                     whileHover={{ 
                       scale: 1.1,
-                      boxShadow: "0 0 30px rgba(255, 138, 122, 0.4)"
+                      boxShadow: "0 0 30px rgba(29, 191, 115, 0.4)"
                     }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -259,7 +259,7 @@ const Index = () => {
                     whileHover={{ 
                       scale: 1.2, 
                       rotate: 10,
-                      color: "rgb(255, 138, 122)"
+                      color: "rgb(29, 191, 115)"
                     }}
                     transition={{ type: "spring", stiffness: 400 }}
                   >

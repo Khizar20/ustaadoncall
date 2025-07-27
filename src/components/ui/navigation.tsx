@@ -76,6 +76,28 @@ export function Navigation() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/login">User Login</Link>
+              </Button>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.85, duration: 0.3 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/provider/login">Provider Login</Link>
+              </Button>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.9, duration: 0.3 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
               <Button variant="default" size="sm" asChild>
                 <Link to="/become-provider">Become a Provider</Link>
               </Button>
@@ -134,6 +156,24 @@ export function Navigation() {
                     </Link>
                   </motion.div>
                 ))}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: navigationItems.length * 0.1, duration: 0.3 }}
+                >
+                  <Button variant="outline" size="sm" className="mt-4 ml-3" asChild>
+                    <Link to="/login">User Login</Link>
+                  </Button>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: navigationItems.length * 0.12, duration: 0.3 }}
+                >
+                  <Button variant="outline" size="sm" className="mt-2 ml-3" asChild>
+                    <Link to="/provider/login">Provider Login</Link>
+                  </Button>
+                </motion.div>
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}

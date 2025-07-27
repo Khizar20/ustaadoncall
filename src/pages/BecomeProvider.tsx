@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Navigation } from "@/components/ui/navigation";
 import { Footer } from "@/components/ui/footer";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import Select from "react-select";
 
 const benefits = [
   {
@@ -40,36 +42,121 @@ const requirements = [
   "Reliable transportation"
 ];
 
+const SERVICE_CATEGORIES = [
+  {
+    key: "plumbing",
+    label: "Plumbing",
+    jobs: [
+      "Pipe Installation",
+      "Leak Repair",
+      "Drain Cleaning",
+      "Water Heater Repair",
+      "Faucet Replacement"
+    ]
+  },
+  {
+    key: "electrical",
+    label: "Electrical",
+    jobs: [
+      "Wiring Installation",
+      "Light Fixture Repair",
+      "Circuit Breaker Replacement",
+      "Outlet Installation",
+      "Fan Installation"
+    ]
+  },
+  {
+    key: "beauty",
+    label: "Beauty & Wellness",
+    jobs: [
+      "Haircut",
+      "Facial",
+      "Manicure",
+      "Pedicure",
+      "Makeup"
+    ]
+  },
+  {
+    key: "carwash",
+    label: "Car Wash",
+    jobs: [
+      "Exterior Wash",
+      "Interior Cleaning",
+      "Waxing",
+      "Engine Cleaning"
+    ]
+  },
+  {
+    key: "cleaning",
+    label: "Home Cleaning",
+    jobs: [
+      "Room Cleaning",
+      "Bathroom Cleaning",
+      "Kitchen Cleaning",
+      "Sofa Cleaning",
+      "Carpet Cleaning"
+    ]
+  },
+  {
+    key: "appliance",
+    label: "Appliance Repair",
+    jobs: [
+      "Washing Machine Repair",
+      "Refrigerator Repair",
+      "Microwave Repair",
+      "AC Repair",
+      "Oven Repair"
+    ]
+  },
+  {
+    key: "gardening",
+    label: "Gardening",
+    jobs: [
+      "Lawn Mowing",
+      "Hedge Trimming",
+      "Planting",
+      "Weed Removal",
+      "Garden Cleanup"
+    ]
+  },
+  {
+    key: "painting",
+    label: "Painting",
+    jobs: [
+      "Interior Painting",
+      "Exterior Painting",
+      "Wall Repair",
+      "Furniture Painting"
+    ]
+  },
+  {
+    key: "other",
+    label: "Other",
+    jobs: []
+  }
+];
+
 const BecomeProvider = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
+    password: "",
     service: "",
     experience: "",
     location: "",
     about: ""
   });
   const { toast } = useToast();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: "Application Submitted!",
-      description: "We'll review your application and get back to you within 48 hours.",
-    });
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      service: "",
-      experience: "",
-      location: "",
-      about: ""
-    });
-  };
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  const [jobsPricing, setJobsPricing] = useState<any>({});
+  const [priceErrors, setPriceErrors] = useState<any>({});
+  const [cnicFront, setCnicFront] = useState<File | null>(null);
+  const [cnicBack, setCnicBack] = useState<File | null>(null);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [step, setStep] = useState(1);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -77,6 +164,178 @@ const BecomeProvider = () => {
       [e.target.name]: e.target.value
     });
   };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedServices((prev) =>
+      prev.some(s => s.value === category)
+        ? prev.filter((s) => s.value !== category)
+        : [...prev, { value: category, label: SERVICE_CATEGORIES.find(c => c.key === category)?.label || category }]
+    );
+  };
+  const handleJobPriceChange = (category: string, job: string, value: string) => {
+    const price = Number(value);
+    setJobsPricing((prev: any) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [job]: value
+      }
+    }));
+    setPriceErrors((prev: any) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [job]: price < 100 ? "Price must be at least 100 PKR" : undefined
+      }
+    }));
+  };
+  const handleCustomJobChange = (category: string, idx: number, field: string, value: string) => {
+    setJobsPricing((prev: any) => {
+      const customJobs = prev[category]?.customJobs || [];
+      const updated = [...customJobs];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return {
+        ...prev,
+        [category]: {
+          ...prev[category],
+          customJobs: updated
+        }
+      };
+    });
+    if (field === "price") {
+      const price = Number(value);
+      setPriceErrors((prev: any) => {
+        const catErrors = prev[category]?.customJobs || [];
+        const updatedErrors = [...catErrors];
+        updatedErrors[idx] = price < 100 ? "Price must be at least 100 PKR" : undefined;
+        return {
+          ...prev,
+          [category]: {
+            ...prev[category],
+            customJobs: updatedErrors
+          }
+        };
+      });
+    }
+  };
+  const addCustomJob = (category: string) => {
+    setJobsPricing((prev: any) => {
+      const customJobs = prev[category]?.customJobs || [];
+      return {
+        ...prev,
+        [category]: {
+          ...prev[category],
+          customJobs: [...customJobs, { job: "", price: "" }]
+        }
+      };
+    });
+  };
+  const deleteCustomJob = (category: string, idx: number) => {
+    setJobsPricing((prev: any) => {
+      const customJobs = prev[category]?.customJobs || [];
+      const updated = customJobs.filter((_: any, i: number) => i !== idx);
+      return {
+        ...prev,
+        [category]: {
+          ...prev[category],
+          customJobs: updated
+        }
+      };
+    });
+  };
+
+  const handleCnicFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) setCnicFront(e.target.files[0]);
+  };
+  const handleCnicBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) setCnicBack(e.target.files[0]);
+  };
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) setProfileImage(e.target.files[0]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      // 1. Register user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password
+      });
+      if (error || !data.user) throw new Error(error?.message || "User registration failed");
+      const userId = data.user.id;
+      // 2. Compose provider data for backend
+      const jobsPricingToSave = selectedServices.reduce((acc: any, service: any) => {
+        const cat = SERVICE_CATEGORIES.find(c => c.key === service.value);
+        if (!cat) return acc;
+        const catJobs = cat.jobs || [];
+        acc[cat.key] = [
+          ...catJobs
+            .filter(job => jobsPricing[cat.key]?.[job])
+            .map(job => ({ job, price: Number(jobsPricing[cat.key][job]) })),
+          ...((jobsPricing[cat.key]?.customJobs || []).filter((c: any) => c.job && c.price).map((c: any) => ({ job: c.job, price: Number(c.price) })) || [])
+        ];
+        return acc;
+      }, {});
+      let cnicFrontUrl = "", cnicBackUrl = "", profileImageUrl = "";
+      if (cnicFront && cnicBack && profileImage) {
+        cnicFrontUrl = await uploadImage(cnicFront, `cnic/front/${formData.email}_${Date.now()}`);
+        cnicBackUrl = await uploadImage(cnicBack, `cnic/back/${formData.email}_${Date.now()}`);
+        profileImageUrl = await uploadImage(profileImage, `profile/${formData.email}_${Date.now()}`);
+      }
+      const providerData = {
+        user_id: userId,
+        name: `${formData.firstName} ${formData.lastName}`,
+        service_category: selectedServices.map(s => s.value).join(','),
+        bio: formData.about,
+        experience: formData.experience,
+        location: formData.location,
+        profile_image: profileImageUrl,
+        cnic_front: cnicFrontUrl,
+        cnic_back: cnicBackUrl,
+        is_verified: false,
+        jobs_pricing: jobsPricingToSave
+      };
+      const response = await fetch("http://localhost:8000/providers/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(providerData)
+      });
+      if (!response.ok) throw new Error(await response.text());
+      toast({
+        title: "Application Submitted!",
+        description: "Your provider profile has been created.",
+      });
+      setFormData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        password: "",
+        service: "",
+        experience: "",
+        location: "",
+        about: ""
+      });
+    } catch (err: any) {
+      toast({
+        title: "Submission Failed",
+        description: err.message || "Could not submit provider data.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const hasPriceErrors = Object.values(priceErrors).some((cat: any) => {
+    if (!cat) return false;
+    if (Array.isArray(cat.customJobs)) {
+      if (cat.customJobs.some((err: any) => err)) return true;
+    }
+    return Object.values(cat).some((err: any) => err && err !== cat.customJobs);
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -213,155 +472,256 @@ const BecomeProvider = () => {
             
             <Card className="p-8 border-border bg-background">
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-foreground mb-2">
-                      First Name *
-                    </label>
-                    <Input
-                      id="firstName"
-                      name="firstName"
-                      type="text"
-                      required
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      className="bg-card border-border"
-                      placeholder="Your first name"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-foreground mb-2">
-                      Last Name *
-                    </label>
-                    <Input
-                      id="lastName"
-                      name="lastName"
-                      type="text"
-                      required
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      className="bg-card border-border"
-                      placeholder="Your last name"
-                    />
-                  </div>
+                {step === 1 && (
+                  <>
+                    <h3 className="text-xl font-bold mb-4">Personal Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="firstName" className="block text-sm font-medium text-foreground mb-2">
+                          First Name *
+                        </label>
+                        <Input
+                          id="firstName"
+                          name="firstName"
+                          type="text"
+                          required
+                          value={formData.firstName}
+                          onChange={handleChange}
+                          className="bg-card border-border"
+                          placeholder="Your first name"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="lastName" className="block text-sm font-medium text-foreground mb-2">
+                          Last Name *
+                        </label>
+                        <Input
+                          id="lastName"
+                          name="lastName"
+                          type="text"
+                          required
+                          value={formData.lastName}
+                          onChange={handleChange}
+                          className="bg-card border-border"
+                          placeholder="Your last name"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
+                          Email Address *
+                        </label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          required
+                          value={formData.email}
+                          onChange={handleChange}
+                          className="bg-card border-border"
+                          placeholder="your.email@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
+                          Phone Number *
+                        </label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          type="tel"
+                          required
+                          value={formData.phone}
+                          onChange={handleChange}
+                          className="bg-card border-border"
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
+                          Password *
+                        </label>
+                        <Input
+                          id="password"
+                          name="password"
+                          type="password"
+                          required
+                          value={formData.password}
+                          onChange={handleChange}
+                          className="bg-card border-border"
+                          placeholder="Create a password"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="experience" className="block text-sm font-medium text-foreground mb-2">
+                          Years of Experience *
+                        </label>
+                        <select
+                          id="experience"
+                          name="experience"
+                          required
+                          value={formData.experience}
+                          onChange={handleChange}
+                          className="w-full h-10 px-3 bg-card border border-border rounded-md text-foreground"
+                        >
+                          <option value="">Select experience</option>
+                          <option value="1-2">1-2 years</option>
+                          <option value="3-5">3-5 years</option>
+                          <option value="6-10">6-10 years</option>
+                          <option value="10+">10+ years</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="location" className="block text-sm font-medium text-foreground mb-2">
+                          Service Area *
+                        </label>
+                        <Input
+                          id="location"
+                          name="location"
+                          type="text"
+                          required
+                          value={formData.location}
+                          onChange={handleChange}
+                          className="bg-card border-border"
+                          placeholder="City, State or ZIP code"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="about" className="block text-sm font-medium text-foreground mb-2">
+                        Tell Us About Yourself *
+                      </label>
+                      <Textarea
+                        id="about"
+                        name="about"
+                        required
+                        value={formData.about}
+                        onChange={handleChange}
+                        className="bg-card border-border min-h-[120px]"
+                        placeholder="Describe your experience, specialties, and what makes you a great service provider..."
+                      />
+                    </div>
+                  </>
+                )}
+                {step === 2 && (
+                  <>
+                    <h3 className="text-xl font-bold mb-4">Services & Pricing</h3>
+                    <div>
+                      <label htmlFor="services" className="block text-sm font-medium text-foreground mb-2">
+                        Select Service(s) You Offer *
+                      </label>
+                      <Select
+                        id="services"
+                        isMulti
+                        name="services"
+                        options={SERVICE_CATEGORIES.filter(cat => cat.key !== "other").map(cat => ({ value: cat.key, label: cat.label }))}
+                        value={selectedServices}
+                        onChange={setSelectedServices}
+                        classNamePrefix="react-select"
+                        placeholder="Select one or more services"
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      {selectedServices.map((service: any) => {
+                        const cat = SERVICE_CATEGORIES.find(c => c.key === service.value);
+                        if (!cat) return null;
+                        return (
+                          <div key={cat.key} className="border p-4 rounded-md mb-4 mt-4">
+                            <div className="font-semibold mb-2">{cat.label} Jobs & Pricing</div>
+                            {cat.jobs.map((job) => (
+                              <div key={job} className="flex items-center space-x-2">
+                                <span className="w-48">{job}</span>
+                                <Input
+                                  type="number"
+                                  min="100"
+                                  placeholder="Price (PKR)"
+                                  value={jobsPricing[cat.key]?.[job] || ""}
+                                  onChange={e => handleJobPriceChange(cat.key, job, e.target.value)}
+                                  className="w-32"
+                                />
+                                {priceErrors[cat.key]?.[job] && (
+                                  <span className="text-red-500 text-xs ml-2">{priceErrors[cat.key][job]}</span>
+                                )}
+                              </div>
+                            ))}
+                            {/* Custom jobs */}
+                            <div className="mt-2">
+                              <Button type="button" size="sm" onClick={() => addCustomJob(cat.key)}>
+                                + Add Other Job
+                              </Button>
+                              {(jobsPricing[cat.key]?.customJobs || []).map((custom: any, idx: number) => (
+                                <div key={idx} className="flex items-center space-x-2 mt-2">
+                                  <Input
+                                    type="text"
+                                    placeholder="Job Name"
+                                    value={custom.job}
+                                    onChange={e => handleCustomJobChange(cat.key, idx, "job", e.target.value)}
+                                    className="w-48"
+                                  />
+                                  <Input
+                                    type="number"
+                                    min="100"
+                                    placeholder="Price (PKR)"
+                                    value={custom.price}
+                                    onChange={e => handleCustomJobChange(cat.key, idx, "price", e.target.value)}
+                                    className="w-32"
+                                  />
+                                  <Button type="button" size="icon" variant="destructive" onClick={() => deleteCustomJob(cat.key, idx)}>
+                                    ×
+                                  </Button>
+                                  {priceErrors[cat.key]?.customJobs?.[idx] && (
+                                    <span className="text-red-500 text-xs ml-2">{priceErrors[cat.key].customJobs[idx]}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+                {step === 3 && (
+                  <>
+                    <h3 className="text-xl font-bold mb-4">Identity Verification</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">CNIC Front Image *</label>
+                        <input type="file" accept="image/*" required onChange={handleCnicFrontChange} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">CNIC Back Image *</label>
+                        <input type="file" accept="image/*" required onChange={handleCnicBackChange} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Profile Image *</label>
+                        <input type="file" accept="image/*" required onChange={handleProfileImageChange} />
+                      </div>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between mt-8">
+                  {step > 1 && (
+                    <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
+                      Back
+                    </Button>
+                  )}
+                  {step < 3 && (
+                    <Button type="button" variant="default" onClick={() => setStep(step + 1)}>
+                      Next
+                    </Button>
+                  )}
+                  {step === 3 && (
+                    <Button type="submit" variant="default" size="lg" className="px-8" disabled={isLoading || hasPriceErrors}>
+                      {isLoading ? "Submitting..." : "Submit"}
+                    </Button>
+                  )}
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                      Email Address *
-                    </label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="bg-card border-border"
-                      placeholder="your.email@example.com"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
-                      Phone Number *
-                    </label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      required
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="bg-card border-border"
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="service" className="block text-sm font-medium text-foreground mb-2">
-                      Primary Service *
-                    </label>
-                    <select
-                      id="service"
-                      name="service"
-                      required
-                      value={formData.service}
-                      onChange={handleChange}
-                      className="w-full h-10 px-3 bg-card border border-border rounded-md text-foreground"
-                    >
-                      <option value="">Select a service</option>
-                      <option value="plumbing">Plumbing</option>
-                      <option value="electrical">Electrical</option>
-                      <option value="beauty">Beauty & Wellness</option>
-                      <option value="carwash">Car Wash</option>
-                      <option value="cleaning">Home Cleaning</option>
-                      <option value="appliance">Appliance Repair</option>
-                      <option value="gardening">Gardening</option>
-                      <option value="painting">Painting</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="experience" className="block text-sm font-medium text-foreground mb-2">
-                      Years of Experience *
-                    </label>
-                    <select
-                      id="experience"
-                      name="experience"
-                      required
-                      value={formData.experience}
-                      onChange={handleChange}
-                      className="w-full h-10 px-3 bg-card border border-border rounded-md text-foreground"
-                    >
-                      <option value="">Select experience</option>
-                      <option value="1-2">1-2 years</option>
-                      <option value="3-5">3-5 years</option>
-                      <option value="6-10">6-10 years</option>
-                      <option value="10+">10+ years</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="location" className="block text-sm font-medium text-foreground mb-2">
-                    Service Area *
-                  </label>
-                  <Input
-                    id="location"
-                    name="location"
-                    type="text"
-                    required
-                    value={formData.location}
-                    onChange={handleChange}
-                    className="bg-card border-border"
-                    placeholder="City, State or ZIP code"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="about" className="block text-sm font-medium text-foreground mb-2">
-                    Tell Us About Yourself *
-                  </label>
-                  <Textarea
-                    id="about"
-                    name="about"
-                    required
-                    value={formData.about}
-                    onChange={handleChange}
-                    className="bg-card border-border min-h-[120px]"
-                    placeholder="Describe your experience, specialties, and what makes you a great service provider..."
-                  />
-                </div>
-                
-                <Button type="submit" variant="default" size="lg" className="w-full">
-                  Submit Application
-                </Button>
                 
                 <p className="text-sm text-muted-foreground text-center">
                   By submitting this application, you agree to our terms of service and privacy policy.
@@ -377,5 +737,22 @@ const BecomeProvider = () => {
     </div>
   );
 };
+
+async function uploadImage(file: File, path: string): Promise<string> {
+  // Upload the file to the 'provider-uploads' bucket
+  const { data, error } = await supabase.storage
+    .from('provider-uploads')
+    .upload(path, file, { upsert: true });
+
+  if (error) throw error;
+
+  // Get the public URL for the uploaded file
+  const { publicUrl } = supabase
+    .storage
+    .from('provider-uploads')
+    .getPublicUrl(path).data;
+
+  return publicUrl || '';
+}
 
 export default BecomeProvider;

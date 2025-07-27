@@ -44,7 +44,7 @@ const About = () => {
         <div 
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: `linear-gradient(rgba(38, 56, 46, 0.85), rgba(38, 56, 46, 0.85)), url(${aboutBg})`,
+            backgroundImage: `linear-gradient(rgba(29, 191, 115, 0.85), rgba(25, 163, 102, 0.85)), url(${aboutBg})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
