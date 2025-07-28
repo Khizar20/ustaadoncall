@@ -54,7 +54,7 @@ class ProviderOut(ProviderIn):
     created_at: Optional[str] = None
 
 class PendingRequestIn(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None  # Made optional since backend will create user
     first_name: str
     last_name: str
     email: str
@@ -74,6 +74,9 @@ class PendingRequestOut(PendingRequestIn):
     admin_notes: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+class PendingRequestOutWithEmail(PendingRequestOut):
+    email_data: Optional[dict] = None
 
 class AdminLogin(BaseModel):
     username: str
@@ -398,20 +401,207 @@ async def update_admin_info(admin_update: AdminUpdate, current_admin: dict = Dep
 # Create a pending request (new provider application)
 @app.post("/pending-requests/", response_model=PendingRequestOut)
 async def create_pending_request(request: PendingRequestIn):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{SUPABASE_URL}/rest/v1/pending_requests",
-            headers={
-                "apikey": SUPABASE_SERVICE_KEY,
-                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-                "Content-Type": "application/json",
-                "Prefer": "return=representation"
-            },
-            json=request.dict()
-        )
-        if response.status_code not in (200, 201):
-            raise HTTPException(status_code=500, detail=response.text)
-        return response.json()[0]
+    try:
+        print(f"=== PENDING REQUEST CREATION START ===")
+        print(f"Request data: {request.dict()}")
+        print(f"SUPABASE_URL: {SUPABASE_URL}")
+        print(f"SUPABASE_SERVICE_KEY: {SUPABASE_SERVICE_KEY[:20]}..." if SUPABASE_SERVICE_KEY else "NOT SET")
+        
+        async with httpx.AsyncClient() as client:
+            # Check if user already exists in Supabase Auth
+            print(f"Checking if user exists with email: {request.email}")
+            
+            # Try to get existing user
+            print(f"Making request to: {SUPABASE_URL}/auth/v1/admin/users")
+            print(f"With params: filter=email.eq.{request.email}")
+            
+            existing_user_response = await client.get(
+                f"{SUPABASE_URL}/auth/v1/admin/users",
+                headers={
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+                },
+                params={"filter": f"email.eq.{request.email}"}
+            )
+            
+            print(f"Existing user response status: {existing_user_response.status_code}")
+            print(f"Existing user response headers: {existing_user_response.headers}")
+            print(f"Existing user response text: {existing_user_response.text}")
+            
+            user_id = None
+            
+            if existing_user_response.status_code == 200:
+                response_data = existing_user_response.json()
+                print(f"Response data: {response_data}")
+                
+                # Handle the correct response structure: {"users":[],"aud":"authenticated"}
+                existing_users = response_data.get("users", [])
+                print(f"Existing users: {existing_users}")
+                print(f"Existing users type: {type(existing_users)}")
+                print(f"Existing users length: {len(existing_users)}")
+                
+                if existing_users and len(existing_users) > 0:
+                    # User already exists
+                    user_id = existing_users[0]["id"]
+                    print(f"✅ User already exists in Supabase Auth with ID: {user_id}")
+                else:
+                    # User doesn't exist, try to create new user
+                    print(f"User not found in query, attempting to create new user...")
+                    
+                    import secrets
+                    import string
+                    temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+                    
+                    user_data = {
+                        "email": request.email,
+                        "password": temp_password,
+                        "email_confirm": True
+                    }
+                    
+                    print(f"Creating new Supabase user with email: {request.email}")
+                    
+                    # Create user in Supabase Auth
+                    auth_response = await client.post(
+                        f"{SUPABASE_URL}/auth/v1/admin/users",
+                        headers={
+                            "apikey": SUPABASE_SERVICE_KEY,
+                            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                            "Content-Type": "application/json"
+                        },
+                        json=user_data
+                    )
+                    
+                    print(f"Auth response status: {auth_response.status_code}")
+                    print(f"Auth response: {auth_response.text}")
+                    
+                    if auth_response.status_code == 422 and "email_exists" in auth_response.text:
+                        # User already exists but wasn't found by query
+                        print(f"User exists but wasn't found by query, using email to get user ID...")
+                        
+                        # Since the user exists, we can use the email to get their ID
+                        # We'll use a different query approach
+                        try:
+                            # Try to get user by email with a different query
+                            user_query_response = await client.get(
+                                f"{SUPABASE_URL}/auth/v1/admin/users",
+                                headers={
+                                    "apikey": SUPABASE_SERVICE_KEY,
+                                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+                                },
+                                params={"email": request.email}
+                            )
+                            
+                            print(f"User query response: {user_query_response.text}")
+                            
+                            if user_query_response.status_code == 200:
+                                user_data = user_query_response.json()
+                                if user_data.get("users") and len(user_data["users"]) > 0:
+                                    user_id = user_data["users"][0]["id"]
+                                    print(f"✅ Found existing user with ID: {user_id}")
+                                else:
+                                    # If we still can't find the user, we'll need to handle this case
+                                    print(f"⚠️ User exists but can't be found by query, proceeding with new user creation...")
+                                    # For now, we'll skip this user and create a new one
+                                    user_id = None
+                            else:
+                                print(f"⚠️ Failed to query user, proceeding with new user creation...")
+                                user_id = None
+                                
+                        except Exception as e:
+                            print(f"Error in user query: {str(e)}")
+                            user_id = None
+                    
+                    elif auth_response.status_code not in (200, 201):
+                        print(f"ERROR: Failed to create Supabase user")
+                        print(f"Error response: {auth_response.text}")
+                        raise HTTPException(status_code=500, detail=f"Failed to create user account: {auth_response.text}")
+                    else:
+                        auth_user = auth_response.json()
+                        user_id = auth_user["id"]
+                        print(f"✅ Created new Supabase user with ID: {user_id}")
+            else:
+                print(f"ERROR: Failed to check existing user")
+                print(f"Error response: {existing_user_response.text}")
+                # Fallback: try to create user anyway
+                print(f"Falling back to create new user...")
+                
+                import secrets
+                import string
+                temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+                
+                user_data = {
+                    "email": request.email,
+                    "password": temp_password,
+                    "email_confirm": True
+                }
+                
+                print(f"Creating new Supabase user with email: {request.email}")
+                
+                # Create user in Supabase Auth
+                auth_response = await client.post(
+                    f"{SUPABASE_URL}/auth/v1/admin/users",
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    json=user_data
+                )
+                
+                print(f"Auth response status: {auth_response.status_code}")
+                print(f"Auth response: {auth_response.text}")
+                
+                if auth_response.status_code not in (200, 201):
+                    print(f"ERROR: Failed to create Supabase user")
+                    print(f"Error response: {auth_response.text}")
+                    raise HTTPException(status_code=500, detail=f"Failed to create user account: {auth_response.text}")
+                
+                auth_user = auth_response.json()
+                user_id = auth_user["id"]
+                print(f"✅ Created new Supabase user with ID: {user_id}")
+            
+            if not user_id:
+                print(f"⚠️ Could not get or create user ID, proceeding without user_id for now...")
+                # We'll proceed without user_id and let the admin handle it later
+                user_id = None
+            
+            # Now create the pending request with the real user_id
+            request_data = request.dict()
+            request_data["user_id"] = user_id
+            print(f"Request data to send: {request_data}")
+            
+            # Make the request to Supabase
+            response = await client.post(
+                f"{SUPABASE_URL}/rest/v1/pending_requests",
+                headers={
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=representation"
+                },
+                json=request_data
+            )
+            
+            print(f"Response status: {response.status_code}")
+            print(f"Response headers: {response.headers}")
+            print(f"Response text: {response.text}")
+            
+            if response.status_code not in (200, 201):
+                print(f"ERROR: Supabase returned status {response.status_code}")
+                print(f"Error response: {response.text}")
+                raise HTTPException(status_code=500, detail=f"Supabase error: {response.text}")
+            
+            result = response.json()[0]
+            print(f"Successfully created pending request: {result}")
+            print(f"=== PENDING REQUEST CREATION END ===")
+            return result
+            
+    except Exception as e:
+        print(f"EXCEPTION in create_pending_request: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # Get all pending requests (for admin panel)
 @app.get("/pending-requests/", response_model=List[PendingRequestOut])
@@ -446,185 +636,324 @@ async def get_pending_request(request_id: str = Path(..., description="Request U
         return response.json()[0]
 
 # Update pending request status (approve/reject)
-@app.patch("/pending-requests/{request_id}", response_model=PendingRequestOut)
+@app.patch("/pending-requests/{request_id}", response_model=PendingRequestOutWithEmail)
 async def update_pending_request(request_id: str, status_update: dict, current_admin: dict = Depends(get_current_admin)):
-    async with httpx.AsyncClient() as client:
-        # First, get the pending request details
-        get_response = await client.get(
-            f"{SUPABASE_URL}/rest/v1/pending_requests",
-            headers={
-                "apikey": SUPABASE_SERVICE_KEY,
-                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
-            },
-            params={"id": f"eq.{request_id}", "select": "*"}
-        )
+    try:
+        print(f"=== APPROVAL PROCESS START ===")
+        print(f"Request ID: {request_id}")
+        print(f"Status Update: {status_update}")
+        print(f"Admin: {current_admin}")
         
-        if get_response.status_code != 200 or not get_response.json():
-            raise HTTPException(status_code=404, detail="Pending request not found")
-        
-        pending_request = get_response.json()[0]
-        new_status = status_update.get("status")
-        
-        if new_status == "approved":
-            # Create provider record
-            provider_data = {
-                "user_id": pending_request["user_id"],
-                "name": f"{pending_request['first_name']} {pending_request['last_name']}",
-                "service_category": ",".join(pending_request["service_category"]),
-                "bio": pending_request.get("bio", ""),
-                "experience": pending_request.get("experience", ""),
-                "location": pending_request.get("location", ""),
-                "profile_image": pending_request.get("profile_image_url", ""),
-                "cnic_front": pending_request.get("cnic_front_url"),
-                "cnic_back": pending_request.get("cnic_back_url"),
-                "is_verified": True,
-                "jobs_pricing": pending_request.get("jobs_pricing", {})
-            }
-            
-            # Insert into providers table
-            provider_response = await client.post(
-                f"{SUPABASE_URL}/rest/v1/providers",
+        async with httpx.AsyncClient() as client:
+            # First, get the pending request details
+            print(f"Fetching pending request details...")
+            get_response = await client.get(
+                f"{SUPABASE_URL}/rest/v1/pending_requests",
                 headers={
                     "apikey": SUPABASE_SERVICE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-                    "Content-Type": "application/json",
-                    "Prefer": "return=representation"
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
                 },
-                json=provider_data
+                params={"id": f"eq.{request_id}", "select": "*"}
             )
             
-            if provider_response.status_code not in (200, 201):
-                raise HTTPException(status_code=500, detail="Failed to create provider record")
+            print(f"Get response status: {get_response.status_code}")
+            print(f"Get response: {get_response.text}")
             
-            # Delete the pending request after successful provider creation
-            delete_response = await client.delete(
-                f"{SUPABASE_URL}/rest/v1/pending_requests?id=eq.{request_id}",
-                headers={
-                    "apikey": SUPABASE_SERVICE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-                    "Prefer": "return=representation"
+            if get_response.status_code != 200 or not get_response.json():
+                print(f"ERROR: Pending request not found")
+                raise HTTPException(status_code=404, detail="Pending request not found")
+            
+            pending_request = get_response.json()[0]
+            print(f"Found pending request: {pending_request}")
+            
+            new_status = status_update.get("status")
+            print(f"New status: {new_status}")
+        
+            if new_status == "approved":
+                print(f"Processing approval for request...")
+                
+                # Generate one-time password
+                import secrets
+                import string
+                one_time_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+                print(f"Generated password: {one_time_password}")
+                
+                # Use existing user_id from pending request instead of creating new user
+                user_id = pending_request["user_id"]
+                print(f"Using existing user ID: {user_id}")
+                
+                # Update the existing user's password
+                user_data = {
+                    "password": one_time_password
                 }
-            )
-            
-            if delete_response.status_code != 200:
-                raise HTTPException(status_code=500, detail="Failed to delete approved request")
-            
-            # Return the deleted request data
-            return pending_request
-            
-        elif new_status == "rejected":
-            # Delete uploaded documents from storage bucket
-            documents_to_delete = []
-            
-            print(f"Original URLs:")
-            print(f"Profile: {pending_request.get('profile_image_url')}")
-            print(f"CNIC Front: {pending_request.get('cnic_front_url')}")
-            print(f"CNIC Back: {pending_request.get('cnic_back_url')}")
-            
-            if pending_request.get("profile_image_url"):
-                # Extract file path from URL - handle profile folder
-                profile_url = pending_request["profile_image_url"]
-                if "/provider-uploads/" in profile_url:
-                    profile_path = profile_url.split("/provider-uploads/")[-1]
-                    # Ensure it includes the profile/ folder
-                    if not profile_path.startswith("profile/"):
-                        profile_path = f"profile/{profile_path}"
-                    documents_to_delete.append(profile_path)
-                    print(f"Extracted profile path: {profile_path}")
-            
-            if pending_request.get("cnic_front_url"):
-                # Extract file path from URL - handle cnic/front folder
-                cnic_front_url = pending_request["cnic_front_url"]
-                if "/provider-uploads/" in cnic_front_url:
-                    cnic_front_path = cnic_front_url.split("/provider-uploads/")[-1]
-                    # Ensure it includes the cnic/front/ folder
-                    if not cnic_front_path.startswith("cnic/front/"):
-                        cnic_front_path = f"cnic/front/{cnic_front_path}"
-                    documents_to_delete.append(cnic_front_path)
-                    print(f"Extracted CNIC front path: {cnic_front_path}")
-            
-            if pending_request.get("cnic_back_url"):
-                # Extract file path from URL - handle cnic/back folder
-                cnic_back_url = pending_request["cnic_back_url"]
-                if "/provider-uploads/" in cnic_back_url:
-                    cnic_back_path = cnic_back_url.split("/provider-uploads/")[-1]
-                    # Ensure it includes the cnic/back/ folder
-                    if not cnic_back_path.startswith("cnic/back/"):
-                        cnic_back_path = f"cnic/back/{cnic_back_path}"
-                    documents_to_delete.append(cnic_back_path)
-                    print(f"Extracted CNIC back path: {cnic_back_path}")
-            
-            # Delete documents from storage
-            print(f"Attempting to delete {len(documents_to_delete)} documents: {documents_to_delete}")
-            
-            if not documents_to_delete:
-                print("No documents to delete - URLs might be empty or malformed")
-            
-            for document_path in documents_to_delete:
-                try:
-                    delete_url = f"{SUPABASE_URL}/storage/v1/object/provider-uploads/{document_path}"
-                    print(f"Deleting document: {delete_url}")
-                    print(f"Document path: {document_path}")
-                    
-                    storage_response = await client.delete(
-                        delete_url,
-                        headers={
-                            "apikey": SUPABASE_SERVICE_KEY,
-                            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+                
+                print(f"Updating user password for user ID: {user_id}")
+                
+                # Update user password in Supabase Auth
+                auth_response = await client.put(
+                    f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    json=user_data
+                )
+                
+                print(f"Auth response status: {auth_response.status_code}")
+                print(f"Auth response: {auth_response.text}")
+                
+                if auth_response.status_code not in (200, 201):
+                    print(f"ERROR: Failed to update user password")
+                    raise HTTPException(status_code=500, detail="Failed to update user password")
+                
+                print(f"Successfully updated password for user ID: {user_id}")
+                
+                # Check if user profile exists in users table, create if not
+                print(f"Checking if user profile exists in users table...")
+                user_profile_response = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/users",
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+                    },
+                    params={"id": f"eq.{user_id}", "select": "*"}
+                )
+                
+                if user_profile_response.status_code == 200:
+                    existing_user = user_profile_response.json()
+                    if not existing_user:
+                        # Create user profile in users table
+                        print(f"Creating user profile in users table...")
+                        user_profile_data = {
+                            "id": user_id,
+                            "email": pending_request["email"],
+                            "name": f"{pending_request['first_name']} {pending_request['last_name']}",
+                            "phone": pending_request["phone"],
+                            "address": pending_request.get("location", ""),
+                            "addresses": [{"label": "Home", "address": pending_request.get("location", ""), "is_default": True}],
+                            "preferences": {"notifications": True, "sms_notifications": False},
+                            "created_at": datetime.now().isoformat()
                         }
-                    )
-                    
-                    print(f"Delete response status: {storage_response.status_code}")
-                    print(f"Delete response text: {storage_response.text}")
-                    
-                    # Don't fail if document doesn't exist or can't be deleted
-                    if storage_response.status_code == 200:
-                        print(f"✅ Successfully deleted document: {document_path}")
-                    elif storage_response.status_code == 204:
-                        print(f"✅ Successfully deleted document: {document_path}")
-                    elif storage_response.status_code == 404:
-                        print(f"⚠️ Document not found (already deleted?): {document_path}")
+                        
+                        user_insert_response = await client.post(
+                            f"{SUPABASE_URL}/rest/v1/users",
+                            headers={
+                                "apikey": SUPABASE_SERVICE_KEY,
+                                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                                "Content-Type": "application/json",
+                                "Prefer": "return=representation"
+                            },
+                            json=user_profile_data
+                        )
+                        
+                        if user_insert_response.status_code in (200, 201):
+                            print(f"✅ Created user profile in users table")
+                        else:
+                            print(f"⚠️ Failed to create user profile: {user_insert_response.text}")
                     else:
-                        print(f"❌ Failed to delete document {document_path}")
-                        print(f"Status: {storage_response.status_code}")
-                        print(f"Response: {storage_response.text}")
-                except Exception as e:
-                    print(f"❌ Exception while deleting document {document_path}: {str(e)}")
-                    print(f"Exception type: {type(e).__name__}")
-            
-            # Delete the pending request
-            delete_response = await client.delete(
-                f"{SUPABASE_URL}/rest/v1/pending_requests?id=eq.{request_id}",
-                headers={
-                    "apikey": SUPABASE_SERVICE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-                    "Prefer": "return=representation"
+                        print(f"✅ User profile already exists in users table")
+                
+                # Create provider record
+                provider_data = {
+                    "user_id": user_id,
+                    "name": f"{pending_request['first_name']} {pending_request['last_name']}",
+                    "service_category": ",".join(pending_request["service_category"]),
+                    "bio": pending_request.get("bio", ""),
+                    "experience": pending_request.get("experience", ""),
+                    "location": pending_request.get("location", ""),
+                    "profile_image": pending_request.get("profile_image_url", ""),
+                    "cnic_front": pending_request.get("cnic_front_url"),
+                    "cnic_back": pending_request.get("cnic_back_url"),
+                    "is_verified": True,
+                    "jobs_pricing": pending_request.get("jobs_pricing", {}),
+                    "rating": 0,
+                    "reviews_count": 0
                 }
-            )
+                
+                print(f"Creating provider with data: {provider_data}")
+                
+                # Insert into providers table
+                provider_response = await client.post(
+                    f"{SUPABASE_URL}/rest/v1/providers",
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Content-Type": "application/json",
+                        "Prefer": "return=representation"
+                    },
+                    json=provider_data
+                )
+                
+                print(f"Provider response status: {provider_response.status_code}")
+                print(f"Provider response: {provider_response.text}")
+                
+                if provider_response.status_code not in (200, 201):
+                    print(f"ERROR: Failed to create provider record")
+                    raise HTTPException(status_code=500, detail="Failed to create provider record")
+                
+                # Send approval email with credentials
+                email_data = {
+                    "provider_name": f"{pending_request['first_name']} {pending_request['last_name']}",
+                    "provider_email": pending_request["email"],
+                    "one_time_password": one_time_password,
+                    "login_url": "http://localhost:8080/provider-login",
+                    "service_category": ",".join(pending_request["service_category"])
+                }
+                
+                print(f"Email data prepared: {email_data}")
+                
+                # Call email service (this will be handled by frontend)
+                # For now, we'll return the email data to be sent from frontend
+                pending_request["email_data"] = email_data
+                
+                # Delete the pending request after successful provider creation
+                print(f"Deleting pending request...")
+                delete_response = await client.delete(
+                    f"{SUPABASE_URL}/rest/v1/pending_requests?id=eq.{request_id}",
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Prefer": "return=representation"
+                    }
+                )
+                
+                print(f"Delete response status: {delete_response.status_code}")
+                print(f"Delete response: {delete_response.text}")
+                
+                if delete_response.status_code != 200:
+                    print(f"ERROR: Failed to delete approved request")
+                    raise HTTPException(status_code=500, detail="Failed to delete approved request")
+                
+                print(f"=== APPROVAL PROCESS SUCCESSFUL ===")
+                # Create response with email data
+                response_data = {
+                    **pending_request,
+                    "email_data": email_data
+                }
+                print(f"Returning response with email_data: {response_data}")
+                return response_data
+                
+            elif new_status == "rejected":
+                # Delete uploaded documents from storage bucket
+                documents_to_delete = []
+                
+                print(f"Original URLs:")
+                print(f"Profile: {pending_request.get('profile_image_url')}")
+                print(f"CNIC Front: {pending_request.get('cnic_front_url')}")
+                print(f"CNIC Back: {pending_request.get('cnic_back_url')}")
+                
+                if pending_request.get("profile_image_url"):
+                    # Extract file path from URL - handle profile folder
+                    profile_url = pending_request["profile_image_url"]
+                    if "/provider-uploads/" in profile_url:
+                        profile_path = profile_url.split("/provider-uploads/")[-1]
+                        # Ensure it includes the profile/ folder
+                        if not profile_path.startswith("profile/"):
+                            profile_path = f"profile/{profile_path}"
+                        documents_to_delete.append(profile_path)
+                        print(f"Extracted profile path: {profile_path}")
+                
+                if pending_request.get("cnic_front_url"):
+                    # Extract file path from URL - handle cnic/front folder
+                    cnic_front_url = pending_request["cnic_front_url"]
+                    if "/provider-uploads/" in cnic_front_url:
+                        cnic_front_path = cnic_front_url.split("/provider-uploads/")[-1]
+                        # Ensure it includes the cnic/front/ folder
+                        if not cnic_front_path.startswith("cnic/front/"):
+                            cnic_front_path = f"cnic/front/{cnic_front_path}"
+                        documents_to_delete.append(cnic_front_path)
+                        print(f"Extracted CNIC front path: {cnic_front_path}")
+                
+                if pending_request.get("cnic_back_url"):
+                    # Extract file path from URL - handle cnic/back folder
+                    cnic_back_url = pending_request["cnic_back_url"]
+                    if "/provider-uploads/" in cnic_back_url:
+                        cnic_back_path = cnic_back_url.split("/provider-uploads/")[-1]
+                        # Ensure it includes the cnic/back/ folder
+                        if not cnic_back_path.startswith("cnic/back/"):
+                            cnic_back_path = f"cnic/back/{cnic_back_path}"
+                        documents_to_delete.append(cnic_back_path)
+                        print(f"Extracted CNIC back path: {cnic_back_path}")
+                
+                # Delete documents from storage
+                print(f"Attempting to delete {len(documents_to_delete)} documents: {documents_to_delete}")
+                
+                if not documents_to_delete:
+                    print("No documents to delete - URLs might be empty or malformed")
+                
+                for document_path in documents_to_delete:
+                    try:
+                        delete_url = f"{SUPABASE_URL}/storage/v1/object/provider-uploads/{document_path}"
+                        print(f"Deleting document: {delete_url}")
+                        print(f"Document path: {document_path}")
+                        
+                        storage_response = await client.delete(
+                            delete_url,
+                            headers={
+                                "apikey": SUPABASE_SERVICE_KEY,
+                                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+                            }
+                        )
+                        
+                        print(f"Delete response status: {storage_response.status_code}")
+                        print(f"Delete response text: {storage_response.text}")
+                        
+                        # Don't fail if document doesn't exist or can't be deleted
+                        if storage_response.status_code == 200:
+                            print(f"✅ Successfully deleted document: {document_path}")
+                        elif storage_response.status_code == 204:
+                            print(f"✅ Successfully deleted document: {document_path}")
+                        elif storage_response.status_code == 404:
+                            print(f"⚠️ Document not found (already deleted?): {document_path}")
+                        else:
+                            print(f"❌ Failed to delete document {document_path}")
+                            print(f"Status: {storage_response.status_code}")
+                            print(f"Response: {storage_response.text}")
+                    except Exception as e:
+                        print(f"❌ Exception while deleting document {document_path}: {str(e)}")
+                        print(f"Exception type: {type(e).__name__}")
+                
+                # Delete the pending request
+                delete_response = await client.delete(
+                    f"{SUPABASE_URL}/rest/v1/pending_requests?id=eq.{request_id}",
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Prefer": "return=representation"
+                    }
+                )
+                
+                if delete_response.status_code != 200:
+                    raise HTTPException(status_code=404, detail="Failed to delete rejected request")
+                
+                # Return the deleted request data
+                return pending_request
             
-            if delete_response.status_code != 200:
-                raise HTTPException(status_code=404, detail="Failed to delete rejected request")
+            else:
+                # For other status updates (like under_review), just update the status
+                response = await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/pending_requests?id=eq.{request_id}",
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Content-Type": "application/json",
+                        "Prefer": "return=representation"
+                    },
+                    json=status_update
+                )
+                
+                if response.status_code != 200 or not response.json():
+                    raise HTTPException(status_code=404, detail="Failed to update pending request status")
+                
+                return response.json()[0]
             
-            # Return the deleted request data
-            return pending_request
-            
-        else:
-            # For other status updates (like under_review), just update the status
-            response = await client.patch(
-                f"{SUPABASE_URL}/rest/v1/pending_requests?id=eq.{request_id}",
-                headers={
-                    "apikey": SUPABASE_SERVICE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-                    "Content-Type": "application/json",
-                    "Prefer": "return=representation"
-                },
-                json=status_update
-            )
-            
-            if response.status_code != 200 or not response.json():
-                raise HTTPException(status_code=404, detail="Failed to update pending request status")
-            
-            return response.json()[0]
+    except Exception as e:
+        print(f"EXCEPTION in update_pending_request: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # Create a provider (existing endpoint for when admin approves)
 @app.post("/providers/", response_model=ProviderOut)

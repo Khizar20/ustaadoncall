@@ -77,7 +77,7 @@ export function Navigation() {
               whileTap={{ scale: 0.95 }}
             >
               <Button variant="outline" size="sm" asChild>
-                <Link to="/login">User Login</Link>
+                <Link to="/user-login">User Login</Link>
               </Button>
             </motion.div>
             <motion.div
@@ -88,7 +88,7 @@ export function Navigation() {
               whileTap={{ scale: 0.95 }}
             >
               <Button variant="outline" size="sm" asChild>
-                <Link to="/provider/login">Provider Login</Link>
+                <Link to="/provider-login">Provider Login</Link>
               </Button>
             </motion.div>
             <motion.div
@@ -162,7 +162,7 @@ export function Navigation() {
                   transition={{ delay: navigationItems.length * 0.1, duration: 0.3 }}
                 >
                   <Button variant="outline" size="sm" className="mt-4 ml-3" asChild>
-                    <Link to="/login">User Login</Link>
+                    <Link to="/user-login">User Login</Link>
                   </Button>
                 </motion.div>
                 <motion.div
@@ -171,7 +171,7 @@ export function Navigation() {
                   transition={{ delay: navigationItems.length * 0.12, duration: 0.3 }}
                 >
                   <Button variant="outline" size="sm" className="mt-2 ml-3" asChild>
-                    <Link to="/provider/login">Provider Login</Link>
+                    <Link to="/provider-login">Provider Login</Link>
                   </Button>
                 </motion.div>
                 <motion.div

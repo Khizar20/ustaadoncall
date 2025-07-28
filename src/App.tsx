@@ -10,8 +10,17 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import BecomeProvider from "./pages/BecomeProvider";
 import ProviderProfile from "./pages/ProviderProfile";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+import AdminPanel from "./pages/AdminPanel";
+import AdminLogin from "./pages/AdminLogin";
+import ProviderLogin from "./pages/ProviderLogin";
+import ProviderDashboard from "./pages/ProviderDashboard";
+import ProviderProfileUpdate from "./pages/ProviderProfileUpdate";
+import ProviderRouteGuard from "./components/ProviderRouteGuard";
+import UserLogin from "./pages/UserLogin";
+import UserRegister from "./pages/UserRegister";
+import UserDashboard from "./pages/UserDashboard";
+import UserRouteGuard from "./components/UserRouteGuard";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,8 +51,36 @@ function AnimatedRoutes() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/become-provider" element={<BecomeProvider />} />
           <Route path="/provider/:id" element={<ProviderProfile />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/provider-login" element={<ProviderLogin />} />
+          <Route 
+            path="/provider-dashboard" 
+            element={
+              <ProviderRouteGuard>
+                <ProviderDashboard />
+              </ProviderRouteGuard>
+            } 
+          />
+          <Route 
+            path="/provider-profile-update" 
+            element={
+              <ProviderRouteGuard>
+                <ProviderProfileUpdate />
+              </ProviderRouteGuard>
+            } 
+          />
+          <Route path="/user-login" element={<UserLogin />} />
+          <Route path="/user-register" element={<UserRegister />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route 
+            path="/user-dashboard" 
+            element={
+              <UserRouteGuard>
+                <UserDashboard />
+              </UserRouteGuard>
+            } 
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </motion.div>

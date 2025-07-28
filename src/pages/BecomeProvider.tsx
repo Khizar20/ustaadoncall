@@ -98,40 +98,8 @@ const SERVICE_CATEGORIES = [
     ]
   },
   {
-    key: "appliance",
-    label: "Appliance Repair",
-    jobs: [
-      "Washing Machine Repair",
-      "Refrigerator Repair",
-      "Microwave Repair",
-      "AC Repair",
-      "Oven Repair"
-    ]
-  },
-  {
-    key: "gardening",
-    label: "Gardening",
-    jobs: [
-      "Lawn Mowing",
-      "Hedge Trimming",
-      "Planting",
-      "Weed Removal",
-      "Garden Cleanup"
-    ]
-  },
-  {
-    key: "painting",
-    label: "Painting",
-    jobs: [
-      "Interior Painting",
-      "Exterior Painting",
-      "Wall Repair",
-      "Furniture Painting"
-    ]
-  },
-  {
     key: "other",
-    label: "Other",
+    label: "Other Services",
     jobs: []
   }
 ];
@@ -142,7 +110,6 @@ const BecomeProvider = () => {
     lastName: "",
     email: "",
     phone: "",
-    password: "",
     service: "",
     experience: "",
     location: "",
@@ -172,6 +139,7 @@ const BecomeProvider = () => {
         : [...prev, { value: category, label: SERVICE_CATEGORIES.find(c => c.key === category)?.label || category }]
     );
   };
+
   const handleJobPriceChange = (category: string, job: string, value: string) => {
     const price = Number(value);
     setJobsPricing((prev: any) => ({
@@ -189,6 +157,7 @@ const BecomeProvider = () => {
       }
     }));
   };
+
   const handleCustomJobChange = (category: string, idx: number, field: string, value: string) => {
     setJobsPricing((prev: any) => {
       const customJobs = prev[category]?.customJobs || [];
@@ -218,6 +187,7 @@ const BecomeProvider = () => {
       });
     }
   };
+
   const addCustomJob = (category: string) => {
     setJobsPricing((prev: any) => {
       const customJobs = prev[category]?.customJobs || [];
@@ -230,6 +200,7 @@ const BecomeProvider = () => {
       };
     });
   };
+
   const deleteCustomJob = (category: string, idx: number) => {
     setJobsPricing((prev: any) => {
       const customJobs = prev[category]?.customJobs || [];
@@ -245,27 +216,28 @@ const BecomeProvider = () => {
   };
 
   const handleCnicFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) setCnicFront(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) {
+      setCnicFront(e.target.files[0]);
+    }
   };
+
   const handleCnicBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) setCnicBack(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) {
+      setCnicBack(e.target.files[0]);
+    }
   };
+
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) setProfileImage(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) {
+      setProfileImage(e.target.files[0]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // 1. Register user with Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password
-      });
-      if (error || !data.user) throw new Error(error?.message || "User registration failed");
-      const userId = data.user.id;
-      // 2. Compose provider data for backend
+      // Compose pending request data for backend
       const jobsPricingToSave = selectedServices.reduce((acc: any, service: any) => {
         const cat = SERVICE_CATEGORIES.find(c => c.key === service.value);
         if (!cat) return acc;
@@ -278,50 +250,64 @@ const BecomeProvider = () => {
         ];
         return acc;
       }, {});
+      
       let cnicFrontUrl = "", cnicBackUrl = "", profileImageUrl = "";
       if (cnicFront && cnicBack && profileImage) {
         cnicFrontUrl = await uploadImage(cnicFront, `cnic/front/${formData.email}_${Date.now()}`);
         cnicBackUrl = await uploadImage(cnicBack, `cnic/back/${formData.email}_${Date.now()}`);
         profileImageUrl = await uploadImage(profileImage, `profile/${formData.email}_${Date.now()}`);
       }
-      const providerData = {
-        user_id: userId,
-        name: `${formData.firstName} ${formData.lastName}`,
-        service_category: selectedServices.map(s => s.value).join(','),
+      
+      const pendingRequestData = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        service_category: selectedServices.map(s => s.value),
         bio: formData.about,
         experience: formData.experience,
         location: formData.location,
-        profile_image: profileImageUrl,
-        cnic_front: cnicFrontUrl,
-        cnic_back: cnicBackUrl,
-        is_verified: false,
+        profile_image_url: profileImageUrl,
+        cnic_front_url: cnicFrontUrl,
+        cnic_back_url: cnicBackUrl,
         jobs_pricing: jobsPricingToSave
       };
-      const response = await fetch("http://localhost:8000/providers/", {
+      
+      const response = await fetch("http://localhost:8000/pending-requests/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(providerData)
+        body: JSON.stringify(pendingRequestData)
       });
+      
       if (!response.ok) throw new Error(await response.text());
+      
       toast({
-        title: "Application Submitted!",
-        description: "Your provider profile has been created.",
+        title: "Application Submitted Successfully!",
+        description: "Your application has been submitted and is under review. We'll notify you once it's approved.",
       });
+      
       setFormData({
         firstName: "",
         lastName: "",
         email: "",
         phone: "",
-        password: "",
         service: "",
         experience: "",
         location: "",
         about: ""
       });
+      
+      // Reset other form states
+      setSelectedServices([]);
+      setJobsPricing({});
+      setCnicFront(null);
+      setCnicBack(null);
+      setProfileImage(null);
+      
     } catch (err: any) {
       toast({
         title: "Submission Failed",
-        description: err.message || "Could not submit provider data.",
+        description: err.message || "Could not submit application. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -435,41 +421,39 @@ const BecomeProvider = () => {
       {/* Requirements Section */}
       <section className="py-20">
         <div className="container mx-auto px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="font-heading font-bold text-display text-foreground mb-4">
-                What We're Looking For
-              </h2>
-              <p className="text-xl text-muted-foreground">
-                Our requirements ensure quality and safety for all customers
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {requirements.map((requirement, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <CheckCircle className="h-6 w-6 text-primary flex-shrink-0" />
-                  <span className="text-foreground">{requirement}</span>
-                </div>
-              ))}
-            </div>
+          <div className="text-center mb-16">
+            <h2 className="font-heading font-bold text-display text-foreground mb-4">
+              Requirements
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              What you need to get started
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {requirements.map((requirement, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <CheckCircle className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />
+                <p className="text-foreground">{requirement}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Application Form */}
+      {/* Application Section */}
       <section id="application" className="py-20 bg-card">
         <div className="container mx-auto px-6 lg:px-8">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="font-heading font-bold text-display text-foreground mb-4">
-                Start Your Application
-              </h2>
-              <p className="text-xl text-muted-foreground">
-                Take the first step towards growing your business with us
-              </p>
-            </div>
-            
+          <div className="text-center mb-16">
+            <h2 className="font-heading font-bold text-display text-foreground mb-4">
+              Ready to Get Started?
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Complete your application in just a few steps
+            </p>
+          </div>
+          
+          <div className="max-w-4xl mx-auto">
             <Card className="p-8 border-border bg-background">
               <form onSubmit={handleSubmit} className="space-y-6">
                 {step === 1 && (
@@ -541,21 +525,6 @@ const BecomeProvider = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                          Password *
-                        </label>
-                        <Input
-                          id="password"
-                          name="password"
-                          type="password"
-                          required
-                          value={formData.password}
-                          onChange={handleChange}
-                          className="bg-card border-border"
-                          placeholder="Create a password"
-                        />
-                      </div>
-                      <div>
                         <label htmlFor="experience" className="block text-sm font-medium text-foreground mb-2">
                           Years of Experience *
                         </label>
@@ -574,8 +543,6 @@ const BecomeProvider = () => {
                           <option value="10+">10+ years</option>
                         </select>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="location" className="block text-sm font-medium text-foreground mb-2">
                           Service Area *
@@ -608,6 +575,7 @@ const BecomeProvider = () => {
                     </div>
                   </>
                 )}
+                
                 {step === 2 && (
                   <>
                     <h3 className="text-xl font-bold mb-4">Services & Pricing</h3>
@@ -621,10 +589,10 @@ const BecomeProvider = () => {
                         name="services"
                         options={SERVICE_CATEGORIES.filter(cat => cat.key !== "other").map(cat => ({ value: cat.key, label: cat.label }))}
                         value={selectedServices}
-                        onChange={setSelectedServices}
+                        onChange={(newValue) => setSelectedServices(newValue as any[])}
                         classNamePrefix="react-select"
                         placeholder="Select one or more services"
-                      />
+                      />          
                     </div>
                     <div className="space-y-4">
                       {selectedServices.map((service: any) => {
@@ -686,6 +654,7 @@ const BecomeProvider = () => {
                     </div>
                   </>
                 )}
+                
                 {step === 3 && (
                   <>
                     <h3 className="text-xl font-bold mb-4">Identity Verification</h3>
@@ -705,6 +674,7 @@ const BecomeProvider = () => {
                     </div>
                   </>
                 )}
+                
                 <div className="flex justify-between mt-8">
                   {step > 1 && (
                     <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
