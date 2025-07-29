@@ -12,6 +12,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { Navigation } from "@/components/ui/navigation";
 import ChatModal from "@/components/ChatModal";
 import MessageNotification from "@/components/MessageNotification";
+import NotificationBadge from "@/components/NotificationBadge";
+import NotificationDropdown from "@/components/NotificationDropdown";
 import {
   User,
   Settings,
@@ -299,6 +301,11 @@ const UserDashboard = () => {
                 >
                   <Calendar className="w-4 h-4 mr-2" />
                   My Bookings
+                  <NotificationBadge 
+                    currentUserId={userInfo?.id || ''} 
+                    currentUserType="user"
+                    className="ml-auto"
+                  />
                 </Button>
                 <Button
                   variant={activeTab === 'favorites' ? 'default' : 'ghost'}
@@ -344,9 +351,15 @@ const UserDashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
-                <div>
-                  <h2 className="text-3xl font-bold mb-2">Welcome back, {userInfo.name}!</h2>
-                  <p className="text-muted-foreground">Here's what's happening with your account</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-3xl font-bold mb-2">Welcome back, {userInfo.name}!</h2>
+                    <p className="text-muted-foreground">Here's what's happening with your account</p>
+                  </div>
+                  <NotificationDropdown 
+                    currentUserId={userInfo?.id || ''} 
+                    currentUserType="user"
+                  />
                 </div>
 
                 {/* Stats Cards */}
@@ -536,6 +549,11 @@ const UserDashboard = () => {
                               >
                                 <MessageSquare className="w-4 h-4 mr-1" />
                                 {showChatForBooking === booking.id ? 'Hide Chat' : 'Chat'}
+                                <NotificationBadge 
+                                  currentUserId={userInfo?.id || ''} 
+                                  currentUserType="user"
+                                  className="ml-1"
+                                />
                               </Button>
                               {booking.status === 'pending' && (
                                 <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">

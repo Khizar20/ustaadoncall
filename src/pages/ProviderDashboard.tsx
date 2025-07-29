@@ -12,6 +12,8 @@ import { useNavigate } from "react-router-dom";
 import { getServiceCategoryNames, getServiceCategoryByName } from "@/lib/serviceCategories";
 import ChatModal from "@/components/ChatModal";
 import MessageNotification from "@/components/MessageNotification";
+import NotificationBadge from "@/components/NotificationBadge";
+import NotificationDropdown from "@/components/NotificationDropdown";
 import {
   User,
   Settings,
@@ -32,7 +34,8 @@ import {
   AlertCircle,
   Save,
   X,
-  MessageSquare
+  MessageSquare,
+  Check
 } from "lucide-react";
 
 interface ProviderInfo {
@@ -425,6 +428,10 @@ const ProviderDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <NotificationDropdown 
+                currentUserId={providerInfo?.id || ''} 
+                currentUserType="provider"
+              />
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
@@ -474,6 +481,11 @@ const ProviderDashboard = () => {
                 >
                   <Calendar className="w-4 h-4 mr-2" />
                   Orders
+                  <NotificationBadge 
+                    currentUserId={providerInfo?.id || ''} 
+                    currentUserType="provider"
+                    className="ml-auto"
+                  />
                 </Button>
                 <Button
                   variant={activeTab === 'earnings' ? 'default' : 'ghost'}
@@ -523,7 +535,7 @@ const ProviderDashboard = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
-                          <p className="text-2xl font-bold">0</p>
+                          <p className="text-2xl font-bold">{bookings.length}</p>
                         </div>
                         <Calendar className="h-8 w-8 text-blue-600" />
                       </div>
@@ -535,7 +547,9 @@ const ProviderDashboard = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Total Earnings</p>
-                          <p className="text-2xl font-bold">Rs. 0</p>
+                          <p className="text-2xl font-bold">
+                            Rs. {bookings.reduce((total, booking) => total + booking.total_amount, 0).toLocaleString()}
+                          </p>
                         </div>
                         <DollarSign className="h-8 w-8 text-green-600" />
                       </div>
@@ -584,7 +598,7 @@ const ProviderDashboard = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {bookings.slice(0, 5).map((booking) => (
+                        {bookings.slice(0, 3).map((booking) => (
                           <div key={booking.id}>
                             <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                             <div className="flex items-start justify-between mb-3">
@@ -685,6 +699,11 @@ const ProviderDashboard = () => {
                               >
                                 <MessageSquare className="w-4 h-4 mr-1" />
                                 {showChatForBooking === booking.id ? 'Hide Chat' : 'Chat'}
+                                <NotificationBadge 
+                                  currentUserId={providerInfo?.id || ''} 
+                                  currentUserType="provider"
+                                  className="ml-1"
+                                />
                               </Button>
                             </div>
 
@@ -705,10 +724,14 @@ const ProviderDashboard = () => {
                           </div>
                         ))}
                       
-                      {bookings.length > 5 && (
+                      {bookings.length > 3 && (
                         <div className="text-center pt-4">
-                          <Button variant="outline" size="sm">
-                            View All Bookings ({bookings.length})
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setActiveTab('orders')}
+                            className="w-full"
+                          >
+                            View All {bookings.length} Orders
                           </Button>
                         </div>
                       )}
@@ -976,17 +999,136 @@ const ProviderDashboard = () => {
                   <p className="text-muted-foreground">Manage your service requests and bookings</p>
                 </div>
 
-                <Card>
-                  <CardContent className="p-8">
-                    <div className="text-center">
-                      <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No orders yet</h3>
-                      <p className="text-muted-foreground">
-                        You'll see your service requests and bookings here once customers start booking your services.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {bookings.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8">
+                      <div className="text-center">
+                        <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No orders yet</h3>
+                        <p className="text-muted-foreground">
+                          You'll see your service requests and bookings here once customers start booking your services.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => (
+                      <Card key={booking.id} className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-lg">{booking.user_name}</CardTitle>
+                              <CardDescription>
+                                {formatDate(booking.booking_date)} at {booking.booking_time}
+                              </CardDescription>
+                            </div>
+                            <Badge className={getStatusColor(booking.status)}>
+                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="font-medium mb-2">Customer Details</h4>
+                              <div className="space-y-1 text-sm">
+                                <p><span className="font-medium">Name:</span> {booking.user_name}</p>
+                                <p><span className="font-medium">Phone:</span> {booking.user_phone}</p>
+                                <p><span className="font-medium">Location:</span> {booking.service_location}</p>
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="font-medium mb-2">Service Details</h4>
+                              <div className="space-y-1 text-sm">
+                                <p><span className="font-medium">Total Amount:</span> Rs. {booking.total_amount.toLocaleString()}</p>
+                                <p><span className="font-medium">Services:</span></p>
+                                <div className="flex flex-wrap gap-1">
+                                  {booking.selected_services.map((service: any, index: number) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {service.job} - Rs. {service.price}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {booking.special_instructions && (
+                            <div>
+                              <h4 className="font-medium mb-2">Special Instructions</h4>
+                              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                                {booking.special_instructions}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 pt-4 border-t">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setShowChatForBooking(showChatForBooking === booking.id ? null : booking.id)}
+                              className="flex-1"
+                            >
+                              <MessageSquare className="w-4 h-4 mr-1" />
+                              {showChatForBooking === booking.id ? 'Hide Chat' : 'Chat'}
+                              <NotificationBadge 
+                                currentUserId={providerInfo?.id || ''} 
+                                currentUserType="provider"
+                                className="ml-1"
+                              />
+                            </Button>
+                            
+                            {booking.status === 'pending' && (
+                              <>
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                  className="flex-1 bg-green-600 hover:bg-green-700"
+                                >
+                                  <Check className="w-4 h-4 mr-1" />
+                                  Confirm
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive"
+                                  onClick={() => updateBookingStatus(booking.id, 'rejected')}
+                                  className="flex-1"
+                                >
+                                  <X className="w-4 h-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                            
+                            {booking.status === 'confirmed' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => updateBookingStatus(booking.id, 'completed')}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Mark Complete
+                              </Button>
+                            )}
+                          </div>
+
+                          {/* Chat Modal */}
+                          {showChatForBooking === booking.id && (
+                            <ChatModal
+                              isOpen={showChatForBooking === booking.id}
+                              onClose={() => setShowChatForBooking(null)}
+                              bookingId={booking.id}
+                              currentUserId={providerInfo?.id || ''}
+                              currentUserType="provider"
+                              otherPartyName={booking.user_name}
+                            />
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
 

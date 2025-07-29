@@ -65,6 +65,7 @@ const ChatModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [sendingMessageId, setSendingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -129,6 +130,16 @@ const ChatModal = ({
 
       if (!error && data) {
         setMessages(data);
+        
+        // Mark all unread messages as read when chat is opened
+        const unreadMessages = data.filter(
+          msg => !msg.is_read && msg.sender_id !== currentUserId
+        );
+        
+        if (unreadMessages.length > 0) {
+          const messageIds = unreadMessages.map(msg => msg.id);
+          markMessagesAsRead(messageIds);
+        }
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -150,7 +161,15 @@ const ChatModal = ({
         },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
-          setMessages(prev => [...prev, newMessage]);
+          
+          // Check if message already exists to avoid duplicates
+          setMessages(prev => {
+            const messageExists = prev.some(msg => msg.id === newMessage.id);
+            if (messageExists) {
+              return prev;
+            }
+            return [...prev, newMessage];
+          });
           
           // Mark as read if message is from other party
           if (newMessage.sender_id !== currentUserId) {
@@ -181,27 +200,65 @@ const ChatModal = ({
       .eq('id', messageId);
   };
 
+  // Mark multiple messages as read
+  const markMessagesAsRead = async (messageIds: string[]) => {
+    try {
+      await supabase
+        .from('chat_messages')
+        .update({ is_read: true })
+        .in('id', messageIds);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
   // Send message
   const sendMessage = async () => {
     if (!newMessage.trim() || !chatRoom) return;
 
+    const messageContent = newMessage.trim();
+    setNewMessage(''); // Clear input immediately for better UX
+
+    // Create a temporary message for immediate display
+    const tempMessage: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      chat_room_id: chatRoom.id,
+      sender_id: currentUserId,
+      sender_type: currentUserType,
+      content: messageContent,
+      message_type: 'text',
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+
+    // Add temporary message to local state immediately
+    setMessages(prev => [...prev, tempMessage]);
+    setSendingMessageId(tempMessage.id);
+
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('chat_messages')
         .insert({
           chat_room_id: chatRoom.id,
           sender_id: currentUserId,
           sender_type: currentUserType,
-          content: newMessage.trim(),
+          content: messageContent,
           message_type: 'text'
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         throw error;
       }
 
-      setNewMessage('');
+      // Replace temporary message with real message
+      if (data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempMessage.id ? data : msg
+        ));
+      }
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
@@ -209,8 +266,12 @@ const ChatModal = ({
         description: "Failed to send message. Please try again.",
         variant: "destructive"
       });
+      // Remove temporary message and restore input
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+      setNewMessage(messageContent);
     } finally {
       setIsLoading(false);
+      setSendingMessageId(null);
     }
   };
 
@@ -320,12 +381,15 @@ const ChatModal = ({
                           <p className="text-sm">{message.content}</p>
                           <div className="flex items-center justify-between mt-1">
                             <p className={`text-xs ${message.sender_type === currentUserType ? 'text-white/70' : 'text-gray-500'}`}>
-                              {formatMessageTime(message.created_at)}
+                              {message.id.startsWith('temp-') ? 'Sending...' : formatMessageTime(message.created_at)}
                             </p>
-                            {message.sender_type !== currentUserType && !message.is_read && (
+                            {message.sender_type !== currentUserType && !message.is_read && !message.id.startsWith('temp-') && (
                               <Badge variant="secondary" className="text-xs ml-2 bg-blue-100 text-blue-600">
                                 New
                               </Badge>
+                            )}
+                            {message.id.startsWith('temp-') && (
+                              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin ml-2" />
                             )}
                           </div>
                         </div>
