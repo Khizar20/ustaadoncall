@@ -368,26 +368,68 @@ const UserRegister = () => {
                 {/* Resend verification button */}
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
                     if (currentUserId) {
-                      // Resend verification email
-                      supabase.auth.resend({
-                        type: 'signup',
-                        email: formData.email
-                      }).then(({ error }) => {
-                        if (error) {
+                      try {
+                        // First check verification status
+                        const { data: userData, error: userError } = await supabase
+                          .from('users')
+                          .select('*')
+                          .eq('id', currentUserId)
+                          .single();
+
+                        if (userError || !userData) {
                           toast({
-                            title: "Failed to Resend",
-                            description: error.message,
+                            title: "Error",
+                            description: "User not found. Please try registering again.",
                             variant: "destructive"
                           });
+                          return;
+                        }
+
+                        // Check if already verified
+                        if (userData.email_confirmed_at) {
+                          toast({
+                            title: "Already Verified",
+                            description: "This email is already verified. You can log in with your password.",
+                            variant: "default"
+                          });
+                          return;
+                        }
+
+                        // Resend verification email
+                        const { error } = await supabase.auth.resend({
+                          type: 'signup',
+                          email: formData.email
+                        });
+
+                        if (error) {
+                          if (error.message.includes("User already confirmed")) {
+                            toast({
+                              title: "Already Verified",
+                              description: "This email is already verified. You can log in with your password.",
+                              variant: "default"
+                            });
+                          } else {
+                            toast({
+                              title: "Failed to Resend",
+                              description: error.message,
+                              variant: "destructive"
+                            });
+                          }
                         } else {
                           toast({
                             title: "Email Resent",
-                            description: "Verification email has been resent.",
+                            description: "Verification email has been resent. Please check your email and spam folder.",
                           });
                         }
-                      });
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to resend verification email.",
+                          variant: "destructive"
+                        });
+                      }
                     }
                   }}
                   className="w-full"

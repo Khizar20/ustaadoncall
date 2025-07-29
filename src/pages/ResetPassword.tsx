@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import { Eye, EyeOff, Lock, CheckCircle, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Lock, CheckCircle, ArrowRight, AlertCircle } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // Password hashing function (same as in registration and login)
 const hashPassword = async (password: string): Promise<string> => {
@@ -28,16 +28,98 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    // Check if user is in password reset flow
-    const { data: { session } } = supabase.auth.getSession();
-    if (!session) {
-      navigate('/user-login');
-    }
-  }, [navigate]);
+    const checkSession = async () => {
+      try {
+        console.log("=== PASSWORD RESET PAGE LOAD ===");
+        console.log("Current URL:", window.location.href);
+        console.log("Location hash:", location.hash);
+        console.log("Location search:", location.search);
+        console.log("Full location object:", location);
+        
+        // Debug: Log all URL parameters
+        const allParams = new URLSearchParams(window.location.search);
+        const allHashParams = new URLSearchParams(window.location.hash.substring(1));
+        console.log("All search params:", Object.fromEntries(allParams.entries()));
+        console.log("All hash params:", Object.fromEntries(allHashParams.entries()));
+
+        // Check if we have a session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        console.log("Session check result:", { session: !!session, error });
+
+        if (error) {
+          console.error("Session check error:", error);
+          setSessionError("Failed to check session");
+          setIsCheckingSession(false);
+          return;
+        }
+
+        if (!session) {
+          console.log("⚠️ No active session found");
+          
+          // Check if we have access token in URL (from password reset link)
+          const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          
+          let accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+          let refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+          
+          // Also check for type parameter to confirm this is a password reset
+          const type = urlParams.get('type') || hashParams.get('type');
+          
+          console.log("URL tokens:", { 
+            accessToken: !!accessToken, 
+            refreshToken: !!refreshToken,
+            type,
+            search: window.location.search,
+            hash: window.location.hash
+          });
+
+          if (accessToken && refreshToken) {
+            console.log("🔄 Setting session from URL tokens...");
+            
+            // Set the session using the tokens from URL
+            const { data: { session: newSession }, error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+
+            if (setSessionError) {
+              console.error("Failed to set session:", setSessionError);
+              setSessionError("Invalid or expired reset link. Please request a new password reset.");
+            } else if (newSession) {
+              console.log("✅ Session set successfully from reset link");
+              setSessionError(null);
+            } else {
+              console.error("No session after setting tokens");
+              setSessionError("Invalid reset link. Please request a new password reset.");
+            }
+          } else {
+            console.log("❌ No reset tokens found in URL");
+            console.log("Full URL:", window.location.href);
+            setSessionError("Invalid reset link. Please request a new password reset.");
+          }
+        } else {
+          console.log("✅ Active session found");
+          setSessionError(null);
+        }
+      } catch (error: any) {
+        console.error("Session check failed:", error);
+        setSessionError("Failed to verify reset link. Please try again.");
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+
+    checkSession();
+  }, [location]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -61,6 +143,8 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
+      console.log("=== PASSWORD RESET SUBMIT ===");
+
       // Validate form
       const errors = validateForm();
       if (errors.length > 0) {
@@ -78,8 +162,10 @@ const ResetPassword = () => {
       // Get current user session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        throw new Error("No active session found");
+        throw new Error("No active session found. Please request a new password reset link.");
       }
+
+      console.log("✅ User session found:", session.user.email);
 
       // Update password in Supabase Auth
       const { error: authError } = await supabase.auth.updateUser({
@@ -87,8 +173,11 @@ const ResetPassword = () => {
       });
 
       if (authError) {
+        console.error("Auth update error:", authError);
         throw new Error(authError.message);
       }
+
+      console.log("✅ Password updated in Supabase Auth");
 
       // Update password hash in users table
       const { error: userError } = await supabase
@@ -97,8 +186,11 @@ const ResetPassword = () => {
         .eq('id', session.user.id);
 
       if (userError) {
+        console.error("User table update error:", userError);
         throw new Error(userError.message);
       }
+
+      console.log("✅ Password hash updated in users table");
 
       setIsSuccess(true);
       toast({
@@ -112,6 +204,7 @@ const ResetPassword = () => {
       }, 2000);
 
     } catch (error: any) {
+      console.error("Password reset failed:", error);
       toast({
         title: "Update Failed",
         description: error.message || "Failed to update password. Please try again.",
@@ -121,6 +214,63 @@ const ResetPassword = () => {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking session
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Verifying reset link...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if session check failed
+  if (sessionError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center space-y-2">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4"
+              >
+                <AlertCircle className="w-8 h-8 text-red-600" />
+              </motion.div>
+              <CardTitle className="text-2xl font-bold text-red-600">Invalid Reset Link</CardTitle>
+              <CardDescription>
+                {sessionError}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Please request a new password reset link from the login page.
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate('/user-login')}
+                className="w-full"
+              >
+                Go to Login
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (isSuccess) {
     return (

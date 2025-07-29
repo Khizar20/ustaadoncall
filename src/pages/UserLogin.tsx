@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import { testEmailConfiguration, checkEmailSettings } from "@/lib/testEmailConfig";
-import { Eye, EyeOff, User, Lock, Mail, ArrowRight, Key, Bug } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { testEmailConfiguration, checkEmailSettings, testSupabaseEmailConfig, testPasswordReset } from "@/lib/testEmailConfig";
+import { Eye, EyeOff, ArrowRight, Key, Bug, User, Mail, Lock } from "lucide-react";
 
 // Password hashing function (same as in registration)
 const hashPassword = async (password: string): Promise<string> => {
@@ -31,6 +32,10 @@ const UserLogin = () => {
   const [resetEmail, setResetEmail] = useState("");
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
+  const [showResendVerificationDialog, setShowResendVerificationDialog] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [resendVerificationEmail, setResendVerificationEmail] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -46,19 +51,60 @@ const UserLogin = () => {
     try {
       console.log("🔄 Resending verification email to:", email);
       
+      // First check verification status
+      const status = await checkVerificationStatus(email);
+      
+      if (!status.exists) {
+        throw new Error(status.message);
+      }
+      
+      if (status.verified) {
+        // User is already verified, show success message instead of error
+        toast({
+          title: "Already Verified",
+          description: status.message,
+          variant: "default"
+        });
+        
+        // Close the dialog
+        setShowResendVerificationDialog(false);
+        return;
+      }
+
+      console.log("✅ User found and verification pending, proceeding with resend...");
+
+      // Try to resend confirmation email
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email
       });
 
       if (error) {
-        throw new Error(error.message);
+        console.error("❌ Supabase resend error:", error);
+        
+        // Handle specific error cases
+        if (error.message.includes("User already confirmed")) {
+          toast({
+            title: "Already Verified",
+            description: "This email is already verified. You can log in with your password.",
+            variant: "default"
+          });
+        } else if (error.message.includes("User not found")) {
+          throw new Error("Email not found in authentication system. Please register first.");
+        } else if (error.message.includes("Email not confirmed")) {
+          throw new Error("Email verification is still pending. Please check your email and click the verification link.");
+        } else {
+          throw new Error(error.message);
+        }
+      } else {
+        toast({
+          title: "Verification Email Sent",
+          description: "Please check your email for the verification link. Check your spam folder if you don't see it.",
+        });
       }
-
-      toast({
-        title: "Verification Email Sent",
-        description: "Please check your email for the verification link.",
-      });
+      
+      // Close the dialog
+      setShowResendVerificationDialog(false);
     } catch (error: any) {
       console.error("❌ Failed to resend verification:", error);
       toast({
@@ -227,7 +273,7 @@ const UserLogin = () => {
   };
 
   const handlePasswordReset = async () => {
-    if (!resetEmail.trim()) {
+    if (!forgotPasswordEmail.trim()) {
       toast({
         title: "Email Required",
         description: "Please enter your email address.",
@@ -237,20 +283,47 @@ const UserLogin = () => {
     }
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      console.log("🔄 Sending password reset email to:", forgotPasswordEmail);
+
+      // First check if user exists in our database
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', forgotPasswordEmail)
+        .single();
+
+      if (userError || !userData) {
+        throw new Error("Email not found in our system. Please register first.");
+      }
+
+      console.log("✅ User found in database:", userData);
+
+      // Send password reset email
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
         redirectTo: `${window.location.origin}/reset-password`
       });
 
       if (error) {
-        throw new Error(error.message);
+        console.error("❌ Password reset error:", error);
+        
+        // Handle specific error cases
+        if (error.message.includes("User not found")) {
+          throw new Error("Email not found in authentication system. Please register first.");
+        } else {
+          throw new Error(error.message);
+        }
       }
 
       setIsResetSent(true);
       toast({
         title: "Reset Email Sent",
-        description: "Check your email for password reset instructions.",
+        description: "Check your email for password reset instructions. Check your spam folder if you don't see it.",
       });
+      
+      // Close the dialog
+      setShowForgotPasswordDialog(false);
     } catch (error: any) {
+      console.error("❌ Password reset failed:", error);
       toast({
         title: "Reset Failed",
         description: error.message || "Failed to send reset email. Please try again.",
@@ -267,23 +340,44 @@ const UserLogin = () => {
       const email = prompt("Enter email address to test:");
       if (!email) return;
 
-      // Test email configuration
+      // Test 1: Supabase email configuration
+      console.log("🔄 Testing Supabase email configuration...");
+      const supabaseTest = await testSupabaseEmailConfig();
+      console.log("Supabase test result:", supabaseTest);
+      
+      // Test 2: Specific email configuration
+      console.log("🔄 Testing specific email configuration...");
       const emailTest = await testEmailConfiguration(email);
       console.log("Email test result:", emailTest);
       
-      // Check email settings
+      // Test 3: Check email settings
+      console.log("🔄 Checking email settings...");
       const settingsTest = await checkEmailSettings();
       console.log("Settings test result:", settingsTest);
       
-      if (emailTest.success && settingsTest.success) {
+      // Test 4: Test password reset functionality
+      console.log("🔄 Testing password reset functionality...");
+      const passwordResetTest = await testPasswordReset(email);
+      console.log("Password reset test result:", passwordResetTest);
+      
+      // Determine overall result
+      const allTestsPassed = supabaseTest.success && emailTest.success && settingsTest.success && passwordResetTest.success;
+      
+      if (allTestsPassed) {
         toast({
           title: "Email Configuration Test",
-          description: "Email configuration appears to be working correctly.",
+          description: "All email configuration tests passed successfully.",
         });
       } else {
+        const errors = [];
+        if (!supabaseTest.success) errors.push(`Supabase: ${supabaseTest.error}`);
+        if (!emailTest.success) errors.push(`Email: ${emailTest.error}`);
+        if (!settingsTest.success) errors.push(`Settings: ${settingsTest.error}`);
+        if (!passwordResetTest.success) errors.push(`Password Reset: ${passwordResetTest.error}`);
+        
         toast({
           title: "Email Configuration Issues",
-          description: `Email test: ${emailTest.error || 'OK'}, Settings: ${settingsTest.error || 'OK'}`,
+          description: `Test results: ${errors.join(', ')}`,
           variant: "destructive"
         });
       }
@@ -296,6 +390,166 @@ const UserLogin = () => {
       });
     } finally {
       setIsTestingEmail(false);
+    }
+  };
+
+  const checkVerificationStatus = async (email: string) => {
+    try {
+      console.log("🔄 Checking verification status for:", email);
+      
+      // First check if user exists in our database
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (userError || !userData) {
+        return { 
+          exists: false, 
+          verified: false, 
+          message: "Email not found in our system. Please register first." 
+        };
+      }
+
+      console.log("✅ User found in database:", userData);
+
+      // Check if user is already confirmed in our database
+      if (userData.email_confirmed_at) {
+        return { 
+          exists: true, 
+          verified: true, 
+          message: "This email is already verified in our system. You can log in with your password." 
+        };
+      }
+
+      // Check if user is already verified in Supabase Auth
+      console.log("🔄 Checking Supabase Auth verification status...");
+      try {
+        // Try to sign in with the email to check if it's verified
+        const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: 'dummy-password-to-check-status' // This will fail but we can check the error
+        });
+
+        console.log("Sign-in attempt result:", { user, signInError });
+
+        if (signInError) {
+          // Check the error message to determine verification status
+          if (signInError.message.includes("Email not confirmed")) {
+            return { 
+              exists: true, 
+              verified: false, 
+              message: "Email verification is pending. You can resend the verification email." 
+            };
+          } else if (signInError.message.includes("Invalid login credentials")) {
+            // This means the email exists and is confirmed, but password is wrong
+            return { 
+              exists: true, 
+              verified: true, 
+              message: "This email is already verified in Supabase. You can log in with your password." 
+            };
+          } else if (signInError.message.includes("User not found")) {
+            return { 
+              exists: false, 
+              verified: false, 
+              message: "Email not found in authentication system. Please register first." 
+            };
+          }
+        } else if (user) {
+          // If sign-in succeeded (unlikely with dummy password), user is verified
+          return { 
+            exists: true, 
+            verified: true, 
+            message: "This email is already verified in Supabase. You can log in with your password." 
+          };
+        }
+      } catch (authCheckError) {
+        console.log("⚠️ Could not check Supabase Auth status:", authCheckError);
+      }
+
+      // Fallback: try to get user info from Supabase Auth admin API
+      try {
+        const { data: { users }, error: adminError } = await supabase.auth.admin.listUsers();
+        
+        if (!adminError && users) {
+          const authUser = users.find(u => u.email === email);
+          if (authUser) {
+            console.log("✅ User found in Supabase Auth:", authUser.email);
+            console.log("Email confirmed in Supabase:", authUser.email_confirmed_at);
+            
+            if (authUser.email_confirmed_at) {
+              return { 
+                exists: true, 
+                verified: true, 
+                message: "This email is already verified in Supabase. You can log in with your password." 
+              };
+            } else {
+              return { 
+                exists: true, 
+                verified: false, 
+                message: "Email verification is pending. You can resend the verification email." 
+              };
+            }
+          }
+        }
+      } catch (adminError) {
+        console.log("⚠️ Could not check Supabase Auth admin status:", adminError);
+      }
+
+      // If we can't determine status, assume pending
+      return { 
+        exists: true, 
+        verified: false, 
+        message: "Email verification status unclear. You can try resending the verification email." 
+      };
+
+    } catch (error: any) {
+      console.error("❌ Verification status check failed:", error);
+      return { 
+        exists: false, 
+        verified: false, 
+        message: "Failed to check verification status. Please try again." 
+      };
+    }
+  };
+
+  const debugVerificationStatus = async (email: string) => {
+    console.log("=== DEBUG VERIFICATION STATUS ===");
+    console.log("Email:", email);
+    
+    try {
+      // Check database
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+      
+      console.log("Database check:", { userData, userError });
+      
+      // Check Supabase Auth
+      try {
+        const { data: { users }, error: authError } = await supabase.auth.admin.listUsers();
+        const authUser = users?.find(u => u.email === email);
+        console.log("Supabase Auth check:", { authUser, authError });
+      } catch (adminError) {
+        console.log("Admin API error:", adminError);
+      }
+      
+      // Try sign-in test
+      try {
+        const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: 'test-password'
+        });
+        console.log("Sign-in test:", { user, signInError });
+      } catch (signInError) {
+        console.log("Sign-in test error:", signInError);
+      }
+      
+    } catch (error) {
+      console.error("Debug error:", error);
     }
   };
 
@@ -423,11 +677,8 @@ const UserLogin = () => {
                   variant="link"
                   className="text-sm text-muted-foreground hover:text-primary"
                   onClick={() => {
-                    const email = prompt("Enter your email address:");
-                    if (email) {
-                      setResetEmail(email);
-                      handlePasswordReset();
-                    }
+                    setForgotPasswordEmail(formData.email);
+                    setShowForgotPasswordDialog(true);
                   }}
                 >
                   Forgot Password?
@@ -437,10 +688,8 @@ const UserLogin = () => {
                   variant="link"
                   className="text-sm text-muted-foreground hover:text-primary"
                   onClick={() => {
-                    const email = prompt("Enter your email address to resend verification:");
-                    if (email) {
-                      handleResendVerification(email);
-                    }
+                    setResendVerificationEmail(formData.email);
+                    setShowResendVerificationDialog(true);
                   }}
                   disabled={isResendingVerification}
                 >
@@ -507,6 +756,104 @@ const UserLogin = () => {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={showForgotPasswordDialog} onOpenChange={setShowForgotPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Enter your email address to receive a password reset link.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="forgot-password-email">Email</Label>
+              <Input
+                id="forgot-password-email"
+                value={forgotPasswordEmail}
+                onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                placeholder="Enter your email"
+              />
+            </div>
+          </div>
+          <Button onClick={handlePasswordReset} className="w-full">Send Reset Link</Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resend Verification Dialog */}
+      <Dialog open={showResendVerificationDialog} onOpenChange={setShowResendVerificationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resend Verification Email</DialogTitle>
+            <DialogDescription>
+              Enter your email address to check verification status and resend the verification email if needed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="resend-verification-email">Email</Label>
+              <Input
+                id="resend-verification-email"
+                value={resendVerificationEmail}
+                onChange={(e) => setResendVerificationEmail(e.target.value)}
+                placeholder="Enter your email"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={async () => {
+                if (resendVerificationEmail.trim()) {
+                  const status = await checkVerificationStatus(resendVerificationEmail);
+                  if (status.verified) {
+                    toast({
+                      title: "Already Verified",
+                      description: status.message,
+                      variant: "default"
+                    });
+                  } else if (!status.exists) {
+                    toast({
+                      title: "Email Not Found",
+                      description: status.message,
+                      variant: "destructive"
+                    });
+                  } else {
+                    toast({
+                      title: "Verification Pending",
+                      description: status.message,
+                      variant: "default"
+                    });
+                  }
+                }
+              }}
+              className="flex-1"
+            >
+              Check Status
+            </Button>
+            <Button 
+              onClick={() => handleResendVerification(resendVerificationEmail)} 
+              className="flex-1"
+              disabled={isResendingVerification}
+            >
+              {isResendingVerification ? "Sending..." : "Resend Email"}
+            </Button>
+          </div>
+          
+          {/* Debug button for development */}
+          {process.env.NODE_ENV === 'development' && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => debugVerificationStatus(resendVerificationEmail)}
+              className="w-full text-xs"
+            >
+              Debug Verification Status
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
