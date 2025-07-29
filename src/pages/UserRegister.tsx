@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { testUsersTable, checkRLSPolicies } from "@/lib/testUsersTable";
-import { Eye, EyeOff, User, Lock, Mail, Phone, MapPin, ArrowRight, CheckCircle, Bug } from "lucide-react";
+import { Eye, EyeOff, User, Lock, Mail, Phone, MapPin, ArrowRight, CheckCircle, Bug, Home, ArrowLeft } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 
 // Simple password hashing function (in production, use bcrypt or similar)
@@ -299,22 +299,14 @@ const UserRegister = () => {
       const rlsTest = await checkRLSPolicies();
       console.log("RLS test result:", rlsTest);
       
-      if (tableTest.success && rlsTest.success) {
-        toast({
-          title: "Database Tests Passed",
-          description: "Users table and RLS policies are working correctly.",
-        });
-      } else {
-        toast({
-          title: "Database Tests Failed",
-          description: `Table test: ${tableTest.error || 'OK'}, RLS test: ${rlsTest.error || 'OK'}`,
-          variant: "destructive"
-        });
-      }
-    } catch (error: any) {
-      console.error("Test failed:", error);
       toast({
-        title: "Test Failed",
+        title: "Database Tests Complete",
+        description: "Check the console for detailed test results.",
+      });
+    } catch (error: any) {
+      console.error("❌ Database test error:", error);
+      toast({
+        title: "Database Test Failed",
         description: error.message,
         variant: "destructive"
       });
@@ -323,118 +315,97 @@ const UserRegister = () => {
     }
   };
 
+  // Show success state if registration was successful
   if (isVerificationSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
-          <Card className="shadow-xl border-0">
-            <CardHeader className="text-center space-y-2">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2 }}
-                className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"
-              >
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </motion.div>
-              <CardTitle className="text-2xl font-bold text-green-600">Check Your Email</CardTitle>
-              <CardDescription>
-                We've sent a verification link to {formData.email}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Please check your email and click the verification link to activate your account.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Don't see the email? Check your spam folder.
-                </p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        {/* Header Navigation */}
+        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between h-16">
+              {/* Logo and Back Button */}
+              <div className="flex items-center gap-4">
+                <Link 
+                  to="/" 
+                  className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                  <span className="font-medium">Back to Home</span>
+                </Link>
               </div>
-              
-              <div className="space-y-2">
+
+              {/* Logo */}
+              <Link to="/" className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <Home className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-bold text-xl">UstaadOnCall</span>
+              </Link>
+
+              {/* Right side - empty for balance */}
+              <div className="w-24"></div>
+            </div>
+          </div>
+        </header>
+
+        {/* Success Message */}
+        <div className="flex items-center justify-center p-4 min-h-[calc(100vh-4rem)]">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full max-w-md"
+          >
+            <Card className="shadow-xl border-0">
+              <CardHeader className="text-center space-y-2">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"
+                >
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </motion.div>
+                <CardTitle className="text-2xl font-bold text-green-600">Registration Successful!</CardTitle>
+                <CardDescription>
+                  Your account has been created successfully. Please check your email for verification.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    <strong>Next Steps:</strong>
+                  </p>
+                  <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                    <li>• Check your email for verification link</li>
+                    <li>• Click the verification link to activate your account</li>
+                    <li>• Once verified, you can log in to your account</li>
+                  </ul>
+                </div>
+                
                 <Button
+                  onClick={() => {
+                    setIsVerificationSent(false);
+                    setFormData({
+                      name: "",
+                      email: "",
+                      phone: "",
+                      password: "",
+                      confirmPassword: "",
+                      address: ""
+                    });
+                  }}
+                  className="w-full"
+                >
+                  Register Another Account
+                </Button>
+                
+                <Button
+                  variant="outline"
                   onClick={() => navigate('/user-login')}
                   className="w-full"
                 >
                   Go to Login
-                </Button>
-                
-                {/* Resend verification button */}
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (currentUserId) {
-                      try {
-                        // First check verification status
-                        const { data: userData, error: userError } = await supabase
-                          .from('users')
-                          .select('*')
-                          .eq('id', currentUserId)
-                          .single();
-
-                        if (userError || !userData) {
-                          toast({
-                            title: "Error",
-                            description: "User not found. Please try registering again.",
-                            variant: "destructive"
-                          });
-                          return;
-                        }
-
-                        // Check if already verified
-                        if (userData.email_confirmed_at) {
-                          toast({
-                            title: "Already Verified",
-                            description: "This email is already verified. You can log in with your password.",
-                            variant: "default"
-                          });
-                          return;
-                        }
-
-                        // Resend verification email
-                        const { error } = await supabase.auth.resend({
-                          type: 'signup',
-                          email: formData.email
-                        });
-
-                        if (error) {
-                          if (error.message.includes("User already confirmed")) {
-                            toast({
-                              title: "Already Verified",
-                              description: "This email is already verified. You can log in with your password.",
-                              variant: "default"
-                            });
-                          } else {
-                            toast({
-                              title: "Failed to Resend",
-                              description: error.message,
-                              variant: "destructive"
-                            });
-                          }
-                        } else {
-                          toast({
-                            title: "Email Resent",
-                            description: "Verification email has been resent. Please check your email and spam folder.",
-                          });
-                        }
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to resend verification email.",
-                          variant: "destructive"
-                        });
-                      }
-                    }
-                  }}
-                  className="w-full"
-                >
-                  Resend Verification Email
                 </Button>
                 
                 {/* Development bypass option - only show in development */}
@@ -476,38 +447,69 @@ const UserRegister = () => {
                     )}
                   </>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <Card className="shadow-xl border-0">
-          <CardHeader className="text-center space-y-2">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4"
-            >
-              <User className="w-8 h-8 text-primary" />
-            </motion.div>
-            <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-            <CardDescription>
-              Join UstaadOnCall to book trusted service providers
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Header Navigation */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo and Back Button */}
+            <div className="flex items-center gap-4">
+              <Link 
+                to="/" 
+                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="font-medium">Back to Home</span>
+              </Link>
+            </div>
+
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Home className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-bold text-xl">UstaadOnCall</span>
+            </Link>
+
+            {/* Right side - empty for balance */}
+            <div className="w-24"></div>
+          </div>
+        </div>
+      </header>
+
+      {/* Registration Form */}
+      <div className="flex items-center justify-center p-4 min-h-[calc(100vh-4rem)]">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center space-y-2">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4"
+              >
+                <User className="w-8 h-8 text-primary" />
+              </motion.div>
+              <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
+              <CardDescription>
+                Join UstaadOnCall and start booking services
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -695,6 +697,7 @@ const UserRegister = () => {
         </Card>
       </motion.div>
     </div>
+  </div>
   );
 };
 

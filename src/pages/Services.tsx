@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, Filter, Star, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Filter, Star, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Navigation } from "@/components/ui/navigation";
 import { Footer } from "@/components/ui/footer";
 import { Link } from "react-router-dom";
 import { AnimatedPagination } from "@/components/ui/AnimatedPagination";
+import { supabase } from "@/lib/supabaseClient";
+import { useToast } from "@/hooks/use-toast";
 
 const serviceCategories = [
   "All Services",
@@ -20,179 +22,138 @@ const serviceCategories = [
   "Painting"
 ];
 
-const providers = [
-  {
-    id: 1,
-    name: "Ahmed Hassan",
-    service: "Plumbing",
-    rating: 4.9,
-    reviews: 127,
-    price: "Starting at $80",
-    location: "Downtown",
-    experience: "8 years",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
-  },
-  {
-    id: 2,
-    name: "Maria Rodriguez", 
-    service: "Beauty & Wellness",
-    rating: 5.0,
-    reviews: 89,
-    price: "Starting at $60",
-    location: "Midtown",
-    experience: "5 years",
-    image: "https://images.unsplash.com/photo-1494790108755-2616b612b789?w=150&h=150&fit=crop&crop=face"
-  },
-  {
-    id: 3,
-    name: "James Wilson",
-    service: "Electrical",
-    rating: 4.8,
-    reviews: 156,
-    price: "Starting at $100",
-    location: "Uptown",
-    experience: "12 years",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
-  },
-  {
-    id: 4,
-    name: "Sofia Chen",
-    service: "Home Cleaning",
-    rating: 4.9,
-    reviews: 203,
-    price: "Starting at $50",
-    location: "Westside",
-    experience: "6 years",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
-  },
-  {
-    id: 5,
-    name: "Carlos Mendez",
-    service: "Car Wash",
-    rating: 4.7,
-    reviews: 74,
-    price: "Starting at $30",
-    location: "Eastside",
-    experience: "4 years",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face"
-  },
-  {
-    id: 6,
-    name: "Lisa Thompson",
-    service: "Appliance Repair",
-    rating: 4.8,
-    reviews: 98,
-    price: "Starting at $90",
-    location: "Central",
-    experience: "7 years",
-    image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face"
-  },
-  // Additional providers for pagination demo
-  {
-    id: 7,
-    name: "Bilal Khan",
-    service: "Plumbing",
-    rating: 4.6,
-    reviews: 65,
-    price: "Starting at $70",
-    location: "Northside",
-    experience: "3 years",
-    image: "https://randomuser.me/api/portraits/men/32.jpg"
-  },
-  {
-    id: 8,
-    name: "Fatima Noor",
-    service: "Beauty & Wellness",
-    rating: 4.9,
-    reviews: 120,
-    price: "Starting at $55",
-    location: "Southside",
-    experience: "6 years",
-    image: "https://randomuser.me/api/portraits/women/44.jpg"
-  },
-  {
-    id: 9,
-    name: "John Smith",
-    service: "Electrical",
-    rating: 4.7,
-    reviews: 110,
-    price: "Starting at $95",
-    location: "Downtown",
-    experience: "10 years",
-    image: "https://randomuser.me/api/portraits/men/45.jpg"
-  },
-  {
-    id: 10,
-    name: "Ayesha Malik",
-    service: "Home Cleaning",
-    rating: 5.0,
-    reviews: 140,
-    price: "Starting at $60",
-    location: "Midtown",
-    experience: "8 years",
-    image: "https://randomuser.me/api/portraits/women/65.jpg"
-  },
-  {
-    id: 11,
-    name: "Imran Qureshi",
-    service: "Car Wash",
-    rating: 4.8,
-    reviews: 90,
-    price: "Starting at $35",
-    location: "Uptown",
-    experience: "5 years",
-    image: "https://randomuser.me/api/portraits/men/77.jpg"
-  },
-  {
-    id: 12,
-    name: "Sara Lee",
-    service: "Appliance Repair",
-    rating: 4.9,
-    reviews: 105,
-    price: "Starting at $85",
-    location: "Central",
-    experience: "9 years",
-    image: "https://randomuser.me/api/portraits/women/12.jpg"
-  },
-  {
-    id: 13,
-    name: "Ali Raza",
-    service: "Plumbing",
-    rating: 4.5,
-    reviews: 50,
-    price: "Starting at $65",
-    location: "Westside",
-    experience: "2 years",
-    image: "https://randomuser.me/api/portraits/men/13.jpg"
-  },
-  {
-    id: 14,
-    name: "Mehwish Tariq",
-    service: "Beauty & Wellness",
-    rating: 5.0,
-    reviews: 130,
-    price: "Starting at $70",
-    location: "Eastside",
-    experience: "7 years",
-    image: "https://randomuser.me/api/portraits/women/22.jpg"
-  }
-];
+interface Provider {
+  id: string;
+  user_id: string;
+  name: string;
+  service_category: string;
+  bio: string;
+  experience: string;
+  location: string;
+  profile_image: string;
+  is_verified: boolean;
+  rating: number;
+  reviews_count: number;
+  jobs_pricing: Record<string, any[]>;
+  created_at: string;
+}
 
 const Services = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Services");
   const [page, setPage] = useState(0);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const perPage = 12;
+  const { toast } = useToast();
+
+  // Fetch providers from Supabase
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Fetch only verified providers
+        const { data, error } = await supabase
+          .from('providers')
+          .select('*')
+          .eq('is_verified', true)
+          .order('rating', { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        setProviders(data || []);
+      } catch (err: any) {
+        console.error('Error fetching providers:', err);
+        setError(err.message || 'Failed to fetch providers');
+        toast({
+          title: "Error",
+          description: "Failed to load providers. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProviders();
+  }, [toast]);
 
   const filteredProviders = providers.filter(provider => {
     const matchesSearch = provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         provider.service.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "All Services" || provider.service === selectedCategory;
+                         provider.service_category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         provider.bio.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "All Services" || 
+                          provider.service_category.toLowerCase().includes(selectedCategory.toLowerCase());
     
     return matchesSearch && matchesCategory;
   });
 
   const paginatedProviders = filteredProviders.slice(page * perPage, (page + 1) * perPage);
+
+  const getStartingPrice = (provider: Provider) => {
+    if (!provider.jobs_pricing || typeof provider.jobs_pricing !== 'object') {
+      return "Contact for pricing";
+    }
+
+    let minPrice = Infinity;
+    Object.values(provider.jobs_pricing).forEach((services: any[]) => {
+      if (Array.isArray(services)) {
+        services.forEach((service: any) => {
+          if (service.price && typeof service.price === 'number' && service.price < minPrice) {
+            minPrice = service.price;
+          }
+        });
+      }
+    });
+
+    return minPrice === Infinity ? "Contact for pricing" : `Starting at $${minPrice}`;
+  };
+
+  const getServiceCategories = (provider: Provider) => {
+    if (!provider.service_category) return "General Services";
+    return provider.service_category.split(',').map(cat => cat.trim()).join(', ');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="pt-24">
+          <div className="container mx-auto px-6 lg:px-8 py-12">
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="text-lg">Loading providers...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="pt-24">
+          <div className="container mx-auto px-6 lg:px-8 py-12">
+            <div className="text-center">
+              <p className="text-lg text-muted-foreground mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -259,21 +220,28 @@ const Services = () => {
                 <div className="p-6">
                   <div className="flex items-start gap-4 mb-4">
                     <img
-                      src={provider.image}
+                      src={provider.profile_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"}
                       alt={provider.name}
                       className="w-16 h-16 rounded-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face";
+                      }}
                     />
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
                         {provider.name}
                       </h3>
-                      <p className="text-primary font-medium">{provider.service}</p>
+                      <p className="text-primary font-medium">{getServiceCategories(provider)}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex items-center gap-1">
                           <Star className="h-4 w-4 fill-primary text-primary" />
-                          <span className="text-sm font-medium text-foreground">{provider.rating}</span>
+                          <span className="text-sm font-medium text-foreground">
+                            {provider.rating || 0}
+                          </span>
                         </div>
-                        <span className="text-sm text-muted-foreground">({provider.reviews} reviews)</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({provider.reviews_count || 0} reviews)
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -281,10 +249,21 @@ const Services = () => {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{provider.location}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {provider.location || "Location not specified"}
+                      </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Experience: {provider.experience}</p>
-                    <p className="font-semibold text-foreground">{provider.price}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Experience: {provider.experience || "Not specified"}
+                    </p>
+                    <p className="font-semibold text-foreground">
+                      {getStartingPrice(provider)}
+                    </p>
+                    {provider.bio && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {provider.bio}
+                      </p>
+                    )}
                   </div>
                   
                   <Button variant="default" className="w-full" asChild>

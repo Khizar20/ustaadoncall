@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { getServiceCategoryNames, getServiceCategoryByName } from "@/lib/serviceCategories";
+import ChatModal from "@/components/ChatModal";
+import MessageNotification from "@/components/MessageNotification";
 import {
   User,
   Settings,
@@ -29,7 +31,8 @@ import {
   Clock,
   AlertCircle,
   Save,
-  X
+  X,
+  MessageSquare
 } from "lucide-react";
 
 interface ProviderInfo {
@@ -60,12 +63,29 @@ interface ServiceCategory {
   jobs: ServiceJob[];
 }
 
+interface Booking {
+  id: string;
+  user_name: string;
+  user_phone: string;
+  booking_date: string;
+  booking_time: string;
+  status: string;
+  total_amount: number;
+  selected_services: any[];
+  service_location: string;
+  special_instructions: string;
+  created_at: string;
+  user_id: string;
+}
+
 const ProviderDashboard = () => {
   const [providerInfo, setProviderInfo] = useState<ProviderInfo | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingServices, setIsEditingServices] = useState(false);
   const [services, setServices] = useState<ServiceCategory[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [showChatForBooking, setShowChatForBooking] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -136,11 +156,59 @@ const ProviderDashboard = () => {
         }));
         setServices(servicesData);
       }
+
+      // Fetch provider's bookings
+      await fetchBookings(providerData.id);
     } catch (error) {
       console.error('Auth check failed:', error);
       navigate('/provider-login');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchBookings = async (providerId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          users (
+            name,
+            phone
+          )
+        `)
+        .eq('provider_id', providerId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      // Transform the data to match our interface
+      const transformedBookings = data?.map(booking => ({
+        id: booking.id,
+        user_name: booking.users?.name || 'Unknown User',
+        user_phone: booking.users?.phone || 'No phone',
+        booking_date: booking.booking_date,
+        booking_time: booking.booking_time,
+        status: booking.status,
+        total_amount: booking.total_amount,
+        selected_services: booking.selected_services || [],
+        service_location: booking.service_location,
+        special_instructions: booking.special_instructions,
+        created_at: booking.created_at,
+        user_id: booking.user_id
+      })) || [];
+
+      setBookings(transformedBookings);
+    } catch (error: any) {
+      console.error('Error fetching bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your bookings.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -274,6 +342,54 @@ const ProviderDashboard = () => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'confirmed': return 'bg-blue-100 text-blue-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: newStatus,
+          confirmed_at: newStatus === 'confirmed' ? new Date().toISOString() : null
+        })
+        .eq('id', bookingId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      setBookings(prevBookings => 
+        prevBookings.map(booking => 
+          booking.id === bookingId 
+            ? { ...booking, status: newStatus }
+            : booking
+        )
+      );
+
+      toast({
+        title: "Status Updated",
+        description: `Booking status updated to ${newStatus}.`,
+      });
+    } catch (error: any) {
+      console.error('Error updating booking status:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update booking status.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (isLoading) {
@@ -454,17 +570,150 @@ const ProviderDashboard = () => {
                 {/* Recent Activity */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                    <CardDescription>Your latest orders and updates</CardDescription>
+                    <CardTitle>Recent Bookings</CardTitle>
+                    <CardDescription>Your latest booking requests from customers</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-8">
-                      <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No recent activity</h3>
-                      <p className="text-muted-foreground">
-                        You'll see your orders and updates here once you start receiving requests.
-                      </p>
-                    </div>
+                    {bookings.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
+                        <p className="text-muted-foreground">
+                          You'll see booking requests here once customers start booking your services.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {bookings.slice(0, 5).map((booking) => (
+                          <div key={booking.id}>
+                            <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-foreground">{booking.user_name}</h4>
+                                <p className="text-sm text-muted-foreground">{booking.user_phone}</p>
+                              </div>
+                              <div className="text-right">
+                                <Badge className={`mb-2 ${getStatusColor(booking.status)}`}>
+                                  {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                </Badge>
+                                <p className="text-sm font-bold text-primary">
+                                  Rs. {booking.total_amount.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-4 h-4" />
+                                {formatDate(booking.booking_date)}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                {booking.booking_time}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-4 h-4" />
+                                {booking.service_location}
+                              </span>
+                            </div>
+
+                            {/* Selected Services */}
+                            {booking.selected_services && booking.selected_services.length > 0 && (
+                              <div className="mb-3">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Services:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {booking.selected_services.map((service: any, index: number) => (
+                                    <Badge key={index} variant="outline" className="text-xs">
+                                      {service.job}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Special Instructions */}
+                            {booking.special_instructions && (
+                              <div className="mb-3">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Special Instructions:</p>
+                                <p className="text-xs text-muted-foreground">{booking.special_instructions}</p>
+                              </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            {booking.status === 'pending' && (
+                              <div className="flex gap-2 pt-3 border-t">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                  className="flex-1"
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Confirm
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => updateBookingStatus(booking.id, 'rejected')}
+                                  className="flex-1"
+                                >
+                                  <X className="w-4 h-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </div>
+                            )}
+
+                            {booking.status === 'confirmed' && (
+                              <div className="flex gap-2 pt-3 border-t">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => updateBookingStatus(booking.id, 'completed')}
+                                  className="flex-1"
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Mark Complete
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Chat Button */}
+                            <div className="flex gap-2 pt-3 border-t">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => setShowChatForBooking(showChatForBooking === booking.id ? null : booking.id)}
+                                className="flex-1"
+                              >
+                                <MessageSquare className="w-4 h-4 mr-1" />
+                                {showChatForBooking === booking.id ? 'Hide Chat' : 'Chat'}
+                              </Button>
+                            </div>
+
+                            <div className="text-xs text-muted-foreground mt-2">
+                              Requested on {formatDate(booking.created_at)}
+                            </div>
+                          </div>
+                          
+                                                  {/* Chat Modal for this booking */}
+                        <ChatModal
+                          isOpen={showChatForBooking === booking.id}
+                          onClose={() => setShowChatForBooking(null)}
+                          bookingId={booking.id}
+                          currentUserId={providerInfo?.id || ''}
+                          currentUserType="provider"
+                          otherPartyName={booking.user_name}
+                        />
+                          </div>
+                        ))}
+                      
+                      {bookings.length > 5 && (
+                        <div className="text-center pt-4">
+                          <Button variant="outline" size="sm">
+                            View All Bookings ({bookings.length})
+                          </Button>
+                        </div>
+                      )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -831,6 +1080,14 @@ const ProviderDashboard = () => {
           </div>
         </div>
       </div>
+      
+      {/* Message Notifications */}
+      {providerInfo && (
+        <MessageNotification 
+          currentUserId={providerInfo.id} 
+          currentUserType="provider" 
+        />
+      )}
     </div>
   );
 };
