@@ -55,8 +55,10 @@ const NotificationBadge = ({ currentUserId, currentUserType, className = "" }: N
               .eq('is_read', false)
               .neq('sender_id', currentUserId);
 
-            setUnreadCount(unreadMessages?.length || 0);
-            setHasNewMessages((unreadMessages?.length || 0) > 0);
+                      const count = unreadMessages?.length || 0;
+          setUnreadCount(count);
+          setHasNewMessages(count > 0);
+          console.log(`NotificationBadge: Found ${count} unread messages for ${currentUserType} ${currentUserId}`);
           }
         }
       } catch (error) {
@@ -83,19 +85,33 @@ const NotificationBadge = ({ currentUserId, currentUserType, className = "" }: N
         async (payload) => {
           const newMessage = payload.new as any;
           
-          // Check if this message is for this user
+          // Check if this message is for this user by checking the booking
           const { data: chatRoom } = await supabase
             .from('chat_rooms')
-            .select('*')
+            .select('booking_id')
             .eq('id', newMessage.chat_room_id)
             .single();
 
           if (chatRoom) {
-            const isForThisUser = currentUserType === 'user' 
-              ? chatRoom.user_id === currentUserId 
-              : chatRoom.provider_id === currentUserId;
+            // Check if this booking belongs to the current user
+            let bookingQuery;
+            if (currentUserType === 'user') {
+              bookingQuery = supabase
+                .from('bookings')
+                .select('id')
+                .eq('id', chatRoom.booking_id)
+                .eq('user_id', currentUserId);
+            } else {
+              bookingQuery = supabase
+                .from('bookings')
+                .select('id')
+                .eq('id', chatRoom.booking_id)
+                .eq('provider_id', currentUserId);
+            }
 
-            if (isForThisUser) {
+            const { data: booking } = await bookingQuery;
+
+            if (booking) {
               setUnreadCount(prev => prev + 1);
               setHasNewMessages(true);
               

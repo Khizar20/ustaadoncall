@@ -9,11 +9,13 @@ import bcrypt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from typing import List, Optional
+import math
 
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8")
 
 # Security
 security = HTTPBearer()
@@ -34,6 +36,12 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+class LocationRequest(BaseModel):
+    latitude: float
+    longitude: float
+    radius_km: Optional[float] = 10.0
+    service_category: Optional[str] = None
+
 class ProviderIn(BaseModel):
     user_id: str
     name: str
@@ -41,6 +49,8 @@ class ProviderIn(BaseModel):
     bio: Optional[str] = ""
     experience: Optional[str] = ""
     location: Optional[str] = ""
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     profile_image: Optional[str] = ""
     cnic_front: Optional[str] = None
     cnic_back: Optional[str] = None
@@ -52,6 +62,7 @@ class ProviderOut(ProviderIn):
     rating: Optional[float] = 0
     reviews_count: Optional[int] = 0
     created_at: Optional[str] = None
+    distance: Optional[float] = None
 
 class PendingRequestIn(BaseModel):
     user_id: Optional[str] = None  # Made optional since backend will create user
@@ -62,6 +73,8 @@ class PendingRequestIn(BaseModel):
     service_category: List[str]
     experience: Optional[str] = ""
     location: Optional[str] = ""
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     bio: Optional[str] = ""
     profile_image_url: Optional[str] = ""
     cnic_front_url: Optional[str] = None
@@ -762,6 +775,8 @@ async def update_pending_request(request_id: str, status_update: dict, current_a
                     "bio": pending_request.get("bio", ""),
                     "experience": pending_request.get("experience", ""),
                     "location": pending_request.get("location", ""),
+                    "latitude": pending_request.get("latitude"),
+                    "longitude": pending_request.get("longitude"),
                     "profile_image": pending_request.get("profile_image_url", ""),
                     "cnic_front": pending_request.get("cnic_front_url"),
                     "cnic_back": pending_request.get("cnic_back_url"),
@@ -1038,3 +1053,356 @@ async def delete_provider(provider_id: str):
         if response.status_code != 200:
             raise HTTPException(status_code=404, detail="Provider not found or not deleted")
         return {"message": "Provider deleted"} 
+
+# Enhanced geocoding function using Google Maps API
+async def geocode_address_google(address: str) -> Optional[tuple[float, float]]:
+    """Geocode an address using Google Maps API for better accuracy."""
+    try:
+        print(f"Geocoding address with Google Maps API: {address}")
+        
+        # Add Pakistan to the address if not present
+        search_address = address
+        if not address.lower().includes('pakistan'):
+            search_address = f"{address}, Pakistan"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://maps.googleapis.com/maps/api/geocode/json",
+                params={
+                    "address": search_address,
+                    "key": GOOGLE_MAPS_API_KEY
+                }
+            )
+            
+            data = response.json()
+            print(f"Google Maps API response: {data}")
+            
+            if data.get("results") and len(data["results"]) > 0:
+                location = data["results"][0]["geometry"]["location"]
+                coords = (location["lat"], location["lng"])
+                print(f"Geocoding successful: {coords}")
+                return coords
+            
+            # If no results, try with just the city name
+            if ',' in address:
+                city_name = address.split(',')[0].strip()
+                print(f"Trying with city name: {city_name}")
+                
+                city_response = await client.get(
+                    "https://maps.googleapis.com/maps/api/geocode/json",
+                    params={
+                        "address": f"{city_name}, Pakistan",
+                        "key": GOOGLE_MAPS_API_KEY
+                    }
+                )
+                
+                city_data = city_response.json()
+                if city_data.get("results") and len(city_data["results"]) > 0:
+                    location = city_data["results"][0]["geometry"]["location"]
+                    coords = (location["lat"], location["lng"])
+                    print(f"Geocoding successful with city fallback: {coords}")
+                    return coords
+            
+            print(f"Geocoding failed for address: {address}")
+            return None
+            
+    except Exception as e:
+        print(f"Google Maps geocoding error for {address}: {e}")
+        return None
+
+# Fallback geocoding function using Pakistani cities database
+def geocode_address_fallback(address: str) -> Optional[tuple[float, float]]:
+    """Fallback geocoding using Pakistani cities database."""
+    try:
+        # Pakistani cities with coordinates
+        pakistani_cities = {
+            'islamabad': (33.6844, 73.0479),
+            'rawalpindi': (33.5651, 73.0169),
+            'lahore': (31.5204, 74.3587),
+            'karachi': (24.8607, 67.0011),
+            'peshawar': (34.0150, 71.5249),
+            'faisalabad': (31.4167, 73.0892),
+            'multan': (30.1575, 71.5249),
+            'quetta': (30.1798, 66.9750),
+            'sialkot': (32.4927, 74.5314),
+            'gujranwala': (32.1619, 74.1883),
+            'sargodha': (32.0836, 72.6711),
+            'bahawalpur': (29.3956, 71.6722),
+            'sukkur': (27.7031, 68.8589),
+            'hyderabad': (25.3969, 68.3772),
+            'mardan': (34.1979, 72.0497),
+            'abbottabad': (34.1463, 73.2117),
+            'mirpur': (33.1447, 73.7516),
+            'gujrat': (32.5735, 74.0789),
+            'sahiwal': (30.6646, 73.1016),
+            'okara': (30.8090, 73.4538),
+            'wazirabad': (32.4453, 74.1209),
+            'dera ghazi khan': (30.0500, 70.6333),
+            'sheikhupura': (31.7131, 73.9783),
+            'jhelum': (32.9333, 73.7333),
+            'khanewal': (30.3000, 71.9333),
+            'daska': (32.3242, 74.3500),
+            'mianwali': (32.5833, 71.5500),
+            'toba tek singh': (30.9700, 72.4800),
+            'kabirwala': (30.4061, 71.8667),
+            'burewala': (30.1667, 72.6500),
+            'bahawalnagar': (29.9983, 73.2527),
+            'pakpattan': (30.3411, 73.3861),
+            'attock': (33.7667, 72.3667),
+            'vihari': (30.0419, 72.3528),
+            'kot addu': (30.4700, 70.9644),
+        }
+        
+        # Check if any city name matches
+        address_lower = address.lower()
+        for city, coords in pakistani_cities.items():
+            if city in address_lower:
+                print(f"Found city match: {city} -> {coords}")
+                return coords
+        
+        return None
+    except Exception as e:
+        print(f"Fallback geocoding error for {address}: {e}")
+        return None
+
+# Main geocoding function that tries Google Maps API first, then fallback
+async def geocode_address_enhanced(address: str) -> Optional[tuple[float, float]]:
+    """Enhanced geocoding with Google Maps API and fallback."""
+    try:
+        # Try Google Maps API first
+        coords = await geocode_address_google(address)
+        if coords:
+            return coords
+        
+        # If Google Maps fails, try fallback
+        print(f"Google Maps failed, trying fallback for: {address}")
+        coords = geocode_address_fallback(address)
+        if coords:
+            return coords
+        
+        print(f"All geocoding methods failed for: {address}")
+        return None
+        
+    except Exception as e:
+        print(f"Enhanced geocoding error for {address}: {e}")
+        return None
+
+def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance between two points in kilometers."""
+    try:
+        # Haversine formula
+        R = 6371  # Earth's radius in kilometers
+        
+        lat1_rad = math.radians(lat1)
+        lon1_rad = math.radians(lon1)
+        lat2_rad = math.radians(lat2)
+        lon2_rad = math.radians(lon2)
+        
+        dlat = lat2_rad - lat1_rad
+        dlon = lon2_rad - lon1_rad
+        
+        a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        
+        distance = R * c
+        return distance
+    except Exception as e:
+        print(f"Distance calculation error: {e}")
+        return float('inf')
+
+# New endpoint for enhanced geocoding
+@app.post("/geocode/address")
+async def geocode_address_endpoint(address_request: dict):
+    """Enhanced geocoding endpoint with Google Maps API."""
+    try:
+        address = address_request.get("address", "")
+        if not address:
+            raise HTTPException(status_code=400, detail="Address is required")
+        
+        coords = await geocode_address_enhanced(address)
+        
+        if coords:
+            return {
+                "success": True,
+                "latitude": coords[0],
+                "longitude": coords[1],
+                "address": address
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Could not geocode the address",
+                "address": address
+            }
+            
+    except Exception as e:
+        print(f"Geocoding endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=f"Geocoding failed: {str(e)}")
+
+# Location-based provider search
+@app.post("/providers/nearby", response_model=List[ProviderOut])
+async def get_nearby_providers(location_request: LocationRequest):
+    try:
+        print(f"=== NEARBY PROVIDERS SEARCH ===")
+        print(f"User location: {location_request.latitude}, {location_request.longitude}")
+        print(f"Search radius: {location_request.radius_km}km")
+        print(f"Service category: {location_request.service_category}")
+        
+        async with httpx.AsyncClient() as client:
+            # Build query parameters
+            params = {
+                "select": "*",
+                "is_verified": "eq.true"
+            }
+            
+            if location_request.service_category and location_request.service_category != "All Services":
+                params["service_category"] = f"ilike.%{location_request.service_category}%"
+            
+            print(f"Query params: {params}")
+            
+            # Get all providers
+            response = await client.get(
+                f"{SUPABASE_URL}/rest/v1/providers",
+                headers={
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+                },
+                params=params
+            )
+            
+            print(f"Response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"Failed to fetch providers: {response.text}")
+            
+            providers = response.json()
+            print(f"Found {len(providers)} providers")
+            
+            # Process providers with location data
+            nearby_providers = []
+            
+            for provider in providers:
+                provider_lat = provider.get("latitude")
+                provider_lon = provider.get("longitude")
+                
+                # If provider has coordinates, calculate distance
+                if provider_lat is not None and provider_lon is not None:
+                    distance = calculate_distance(
+                        location_request.latitude,
+                        location_request.longitude,
+                        provider_lat,
+                        provider_lon
+                    )
+                    
+                    # Filter by radius
+                    if distance <= location_request.radius_km:
+                        provider["distance"] = distance
+                        nearby_providers.append(provider)
+                        print(f"Provider {provider['name']}: {distance:.2f}km away")
+                
+                # If provider doesn't have coordinates but has location text, try to geocode
+                elif provider.get("location"):
+                    print(f"Geocoding provider {provider['name']} location: {provider['location']}")
+                    coords = await geocode_address_enhanced(provider["location"])
+                    
+                    if coords:
+                        lat, lon = coords
+                        distance = calculate_distance(
+                            location_request.latitude,
+                            location_request.longitude,
+                            lat,
+                            lon
+                        )
+                        
+                        if distance <= location_request.radius_km:
+                            provider["latitude"] = lat
+                            provider["longitude"] = lon
+                            provider["distance"] = distance
+                            nearby_providers.append(provider)
+                            print(f"Provider {provider['name']} (geocoded): {distance:.2f}km away")
+                            
+                            # Update provider record with coordinates
+                            try:
+                                await client.patch(
+                                    f"{SUPABASE_URL}/rest/v1/providers?id=eq.{provider['id']}",
+                                    headers={
+                                        "apikey": SUPABASE_SERVICE_KEY,
+                                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                                        "Content-Type": "application/json"
+                                    },
+                                    json={"latitude": lat, "longitude": lon}
+                                )
+                                print(f"Updated provider {provider['name']} with coordinates")
+                            except Exception as e:
+                                print(f"Failed to update provider coordinates: {e}")
+            
+            # Sort by distance
+            nearby_providers.sort(key=lambda x: x.get("distance", float('inf')))
+            
+            print(f"Returning {len(nearby_providers)} nearby providers")
+            print(f"=== NEARBY PROVIDERS SEARCH END ===")
+            
+            return nearby_providers
+            
+    except Exception as e:
+        print(f"EXCEPTION in get_nearby_providers: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# Geocode provider location
+@app.post("/providers/{provider_id}/geocode")
+async def geocode_provider_location(provider_id: str):
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get provider
+            response = await client.get(
+                f"{SUPABASE_URL}/rest/v1/providers",
+                headers={
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+                },
+                params={"id": f"eq.{provider_id}", "select": "*"}
+            )
+            
+            if response.status_code != 200 or not response.json():
+                raise HTTPException(status_code=404, detail="Provider not found")
+            
+            provider = response.json()[0]
+            
+            if not provider.get("location"):
+                raise HTTPException(status_code=400, detail="Provider has no location to geocode")
+            
+            # Geocode the location
+            coords = await geocode_address_enhanced(provider["location"])
+            
+            if not coords:
+                raise HTTPException(status_code=400, detail="Could not geocode the provided location")
+            
+            lat, lon = coords
+            
+            # Update provider with coordinates
+            update_response = await client.patch(
+                f"{SUPABASE_URL}/rest/v1/providers?id=eq.{provider_id}",
+                headers={
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={"latitude": lat, "longitude": lon}
+            )
+            
+            if update_response.status_code not in [200, 204]:
+                raise HTTPException(status_code=500, detail="Failed to update provider coordinates")
+            
+            return {
+                "provider_id": provider_id,
+                "latitude": lat,
+                "longitude": lon,
+                "address": provider["location"]
+            }
+            
+    except Exception as e:
+        print(f"EXCEPTION in geocode_provider_location: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") 

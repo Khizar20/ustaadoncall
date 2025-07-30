@@ -9,6 +9,7 @@ import { Footer } from "@/components/ui/footer";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import Select from "react-select";
+import { geocodeAddress } from "@/lib/locationUtils";
 
 const benefits = [
   {
@@ -236,8 +237,75 @@ const BecomeProvider = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
     try {
-      // Compose pending request data for backend
+      // Validate form data
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.location) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all required fields.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (selectedServices.length === 0) {
+        toast({
+          title: "No Services Selected",
+          description: "Please select at least one service category.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Geocode the location
+      let locationCoordinates = null;
+      if (formData.location) {
+        try {
+          locationCoordinates = await geocodeAddress(formData.location);
+          if (locationCoordinates) {
+            console.log("Geocoded location:", locationCoordinates);
+          }
+        } catch (error) {
+          console.error("Geocoding error:", error);
+          // Continue without coordinates - they can be added later
+        }
+      }
+
+      // Upload profile image
+      let profileImageUrl = "";
+      if (profileImage) {
+        const { data: profileData, error: profileError } = await supabase.storage
+          .from('provider-uploads')
+          .upload(`profile/${formData.email}_${Date.now()}`, profileImage);
+        
+        if (profileError) throw profileError;
+        profileImageUrl = `${supabase.storage.from('provider-uploads').getPublicUrl(`profile/${formData.email}_${Date.now()}`).data.publicUrl}`;
+      }
+      
+      // Upload CNIC front
+      let cnicFrontUrl = null;
+      if (cnicFront) {
+        const { data: cnicFrontData, error: cnicFrontError } = await supabase.storage
+          .from('provider-uploads')
+          .upload(`cnic/front/${formData.email}_front_${Date.now()}`, cnicFront);
+        
+        if (cnicFrontError) throw cnicFrontError;
+        cnicFrontUrl = `${supabase.storage.from('provider-uploads').getPublicUrl(`cnic/front/${formData.email}_front_${Date.now()}`).data.publicUrl}`;
+      }
+      
+      // Upload CNIC back
+      let cnicBackUrl = null;
+      if (cnicBack) {
+        const { data: cnicBackData, error: cnicBackError } = await supabase.storage
+          .from('provider-uploads')
+          .upload(`cnic/back/${formData.email}_back_${Date.now()}`, cnicBack);
+        
+        if (cnicBackError) throw cnicBackError;
+        cnicBackUrl = `${supabase.storage.from('provider-uploads').getPublicUrl(`cnic/back/${formData.email}_back_${Date.now()}`).data.publicUrl}`;
+      }
+      
+      // Compose jobs pricing data for backend
       const jobsPricingToSave = selectedServices.reduce((acc: any, service: any) => {
         const cat = SERVICE_CATEGORIES.find(c => c.key === service.value);
         if (!cat) return acc;
@@ -251,13 +319,6 @@ const BecomeProvider = () => {
         return acc;
       }, {});
       
-      let cnicFrontUrl = "", cnicBackUrl = "", profileImageUrl = "";
-      if (cnicFront && cnicBack && profileImage) {
-        cnicFrontUrl = await uploadImage(cnicFront, `cnic/front/${formData.email}_${Date.now()}`);
-        cnicBackUrl = await uploadImage(cnicBack, `cnic/back/${formData.email}_${Date.now()}`);
-        profileImageUrl = await uploadImage(profileImage, `profile/${formData.email}_${Date.now()}`);
-      }
-      
       const pendingRequestData = {
         first_name: formData.firstName,
         last_name: formData.lastName,
@@ -267,6 +328,8 @@ const BecomeProvider = () => {
         bio: formData.about,
         experience: formData.experience,
         location: formData.location,
+        latitude: locationCoordinates?.latitude || null,
+        longitude: locationCoordinates?.longitude || null,
         profile_image_url: profileImageUrl,
         cnic_front_url: cnicFrontUrl,
         cnic_back_url: cnicBackUrl,
