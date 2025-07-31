@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Crosshair, MapPin, Star, Phone, Mail } from 'lucide-react';
+import { Crosshair, MapPin, Star, Phone, Mail, User, Wrench, Zap, Car, Sparkles, Home, Palette, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +14,35 @@ interface InteractiveGoogleMapProps {
   searchRadius?: number;
   onProviderSelect?: (provider: ProviderWithLocation) => void;
 }
+
+// Service category to icon mapping
+const getServiceIcon = (serviceCategory: string): string => {
+  const category = serviceCategory.toLowerCase();
+  
+  if (category.includes('plumbing') || category.includes('plumber')) {
+    return '/plumber.png';
+  } else if (category.includes('electrical') || category.includes('electrician')) {
+    return '/electrician.png';
+  } else if (category.includes('car wash') || category.includes('carwasher')) {
+    return '/carwasher.png';
+  } else if (category.includes('gardening') || category.includes('gardener')) {
+    return '/gardener.png';
+  } else if (category.includes('home cleaning') || category.includes('house cleaner') || category.includes('cleaning')) {
+    return '/housecleaner.png';
+  } else if (category.includes('makeup') || category.includes('makeup artist')) {
+    return '/makeup-artist.png';
+  } else if (category.includes('barber') || category.includes('haircut')) {
+    return '/barber.png';
+  } else if (category.includes('beauty') || category.includes('wellness')) {
+    return '/makeup-artist.png'; // Default for beauty services
+  } else if (category.includes('painting')) {
+    return '/painter.png'; // Assuming you have a painter.png
+  } else if (category.includes('appliance repair')) {
+    return '/appliance-repair.png'; // Assuming you have this icon
+  } else {
+    return '/plumber.png'; // Default fallback
+  }
+};
 
 const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
   userLocation,
@@ -151,40 +180,40 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
       // Create info window
       infoWindowRef.current = new window.google.maps.InfoWindow();
 
-      // Create user location marker
+      // Create user location marker with boy.png
       const userMarkerContent = `
         <div style="
-          width: 32px; 
-          height: 32px; 
-          background: radial-gradient(circle, #3B82F6 0%, #3B82F6 50%, transparent 70%);
-          border: 3px solid white;
+          width: 48px; 
+          height: 48px; 
+          background: white;
+          border: 3px solid #3B82F6;
           border-radius: 50%;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
           position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          overflow: hidden;
         ">
+          <img src="/boy.png" alt="User" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
           <div style="
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 8px;
-            height: 8px;
-            background: white;
+            top: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: #10B981;
+            border: 2px solid white;
             border-radius: 50%;
           "></div>
         </div>
       `;
 
       const userMarkerIcon = {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="16" r="16" fill="#3B82F6" opacity="0.2"/>
-            <circle cx="16" cy="16" r="8" fill="#3B82F6"/>
-            <circle cx="16" cy="16" r="4" fill="white"/>
-          </svg>
-        `),
-        scaledSize: new window.google.maps.Size(32, 32),
-        anchor: new window.google.maps.Point(16, 16)
+        url: '/boy.png',
+        scaledSize: new window.google.maps.Size(48, 48),
+        anchor: new window.google.maps.Point(24, 24)
       };
 
       const userMarker = createMarker(
@@ -242,41 +271,49 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
           return;
         }
 
-        // Create provider marker content
+        // Get the appropriate icon based on service category
+        const serviceIcon = getServiceIcon(provider.service_category);
+
+        // Create provider marker with dynamic icon
         const providerMarkerContent = `
           <div style="
-            width: 32px; 
-            height: 32px; 
-            background: radial-gradient(circle, #EF4444 0%, #EF4444 50%, transparent 70%);
-            border: 3px solid white;
+            width: 48px; 
+            height: 48px; 
+            background: white;
+            border: 3px solid #EF4444;
             border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
+            overflow: hidden;
           ">
+            <img src="${serviceIcon}" alt="${provider.service_category}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
             <div style="
               position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              width: 8px;
-              height: 8px;
-              background: white;
+              top: -2px;
+              right: -2px;
+              width: 16px;
+              height: 16px;
+              background: #FBBF24;
+              border: 2px solid white;
               border-radius: 50%;
-            "></div>
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 10px;
+              font-weight: bold;
+              color: #92400E;
+            ">★</div>
           </div>
         `;
 
         const providerMarkerIcon = {
-          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="16" fill="#EF4444"/>
-              <circle cx="16" cy="16" r="12" fill="white"/>
-              <circle cx="16" cy="16" r="8" fill="#EF4444"/>
-            </svg>
-          `),
-          scaledSize: new window.google.maps.Size(32, 32),
-          anchor: new window.google.maps.Point(16, 16)
+          url: serviceIcon,
+          scaledSize: new window.google.maps.Size(48, 48),
+          anchor: new window.google.maps.Point(24, 24)
         };
 
         const marker = createMarker(
@@ -296,7 +333,7 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
           const content = `
             <div style="padding: 16px; max-width: 300px;">
               <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                <div style="width: 48px; height: 48px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #6b7280;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">
                   ${provider.name.charAt(0)}
                 </div>
                 <div>
