@@ -10,7 +10,9 @@ import { AnimatedPagination } from "@/components/ui/AnimatedPagination";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import LocationPermission from "@/components/LocationPermission";
-import ProvidersMap from "@/components/ProvidersMap";
+import InteractiveGoogleMap from "@/components/InteractiveGoogleMap";
+import MapErrorBoundary from "@/components/MapErrorBoundary";
+
 import { 
   type Location, 
   type ProviderWithLocation,
@@ -333,17 +335,27 @@ const Services = () => {
             </div>
           </div>
 
-          {/* Location-based Results */}
-          {locationPermissionGranted && userLocation && (
-            <div className="mb-8">
-              <ProvidersMap
+          {/* Interactive Map */}
+          <div className="mb-8">
+            <MapErrorBoundary onRetry={handleRefreshLocation}>
+              <InteractiveGoogleMap
                 userLocation={userLocation}
                 providers={nearbyProviders}
                 onRefreshLocation={handleRefreshLocation}
                 isLoading={isLoadingNearby}
+                selectedServiceType={selectedCategory}
+                searchRadius={searchRadius}
+                onProviderSelect={(provider) => {
+                  // Optional: Handle provider selection
+                  console.log('Selected provider:', provider);
+                }}
               />
-            </div>
-          )}
+            </MapErrorBoundary>
+          </div>
+          
+
+          
+
 
           {/* All Providers Section */}
           <div className="mb-8">
