@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
-import { testEmailConfiguration, checkEmailSettings, testSupabaseEmailConfig, testPasswordReset } from "@/lib/testEmailConfig";
-import { Eye, EyeOff, ArrowRight, Key, Bug, User, Mail, Lock, Home, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Key, User, Mail, Lock, Home, ArrowLeft } from "lucide-react";
 
 // Password hashing function (same as in registration)
 const hashPassword = async (password: string): Promise<string> => {
@@ -31,7 +30,6 @@ const UserLogin = () => {
   const [isResetSent, setIsResetSent] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
   const [showResendVerificationDialog, setShowResendVerificationDialog] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
@@ -332,66 +330,7 @@ const UserLogin = () => {
     }
   };
 
-  const handleTestEmailConfig = async () => {
-    setIsTestingEmail(true);
-    try {
-      console.log("=== TESTING EMAIL CONFIGURATION ===");
-      
-      const email = prompt("Enter email address to test:");
-      if (!email) return;
 
-      // Test 1: Supabase email configuration
-      console.log("🔄 Testing Supabase email configuration...");
-      const supabaseTest = await testSupabaseEmailConfig();
-      console.log("Supabase test result:", supabaseTest);
-      
-      // Test 2: Specific email configuration
-      console.log("🔄 Testing specific email configuration...");
-      const emailTest = await testEmailConfiguration(email);
-      console.log("Email test result:", emailTest);
-      
-      // Test 3: Check email settings
-      console.log("🔄 Checking email settings...");
-      const settingsTest = await checkEmailSettings();
-      console.log("Settings test result:", settingsTest);
-      
-      // Test 4: Test password reset functionality
-      console.log("🔄 Testing password reset functionality...");
-      const passwordResetTest = await testPasswordReset(email);
-      console.log("Password reset test result:", passwordResetTest);
-      
-      // Determine overall result
-      const allTestsPassed = supabaseTest.success && emailTest.success && settingsTest.success && passwordResetTest.success;
-      
-      if (allTestsPassed) {
-        toast({
-          title: "Email Configuration Test",
-          description: "All email configuration tests passed successfully.",
-        });
-      } else {
-        const errors = [];
-        if (!supabaseTest.success) errors.push(`Supabase: ${supabaseTest.error}`);
-        if (!emailTest.success) errors.push(`Email: ${emailTest.error}`);
-        if (!settingsTest.success) errors.push(`Settings: ${settingsTest.error}`);
-        if (!passwordResetTest.success) errors.push(`Password Reset: ${passwordResetTest.error}`);
-        
-        toast({
-          title: "Email Configuration Issues",
-          description: `Test results: ${errors.join(', ')}`,
-          variant: "destructive"
-        });
-      }
-    } catch (error: any) {
-      console.error("Email test failed:", error);
-      toast({
-        title: "Test Failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsTestingEmail(false);
-    }
-  };
 
   const checkVerificationStatus = async (email: string) => {
     try {
@@ -514,44 +453,7 @@ const UserLogin = () => {
     }
   };
 
-  const debugVerificationStatus = async (email: string) => {
-    console.log("=== DEBUG VERIFICATION STATUS ===");
-    console.log("Email:", email);
-    
-    try {
-      // Check database
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .single();
-      
-      console.log("Database check:", { userData, userError });
-      
-      // Check Supabase Auth
-      try {
-        const { data: { users }, error: authError } = await supabase.auth.admin.listUsers();
-        const authUser = users?.find(u => u.email === email);
-        console.log("Supabase Auth check:", { authUser, authError });
-      } catch (adminError) {
-        console.log("Admin API error:", adminError);
-      }
-      
-      // Try sign-in test
-      try {
-        const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: 'test-password'
-        });
-        console.log("Sign-in test:", { user, signInError });
-      } catch (signInError) {
-        console.log("Sign-in test error:", signInError);
-      }
-      
-    } catch (error) {
-      console.error("Debug error:", error);
-    }
-  };
+
 
   if (isResetSent) {
     return (
@@ -728,28 +630,7 @@ const UserLogin = () => {
                   </Button>
                 </div>
 
-              {/* Development test button - only show in development */}
-              {process.env.NODE_ENV === 'development' && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleTestEmailConfig}
-                  disabled={isTestingEmail}
-                  className="w-full text-xs"
-                >
-                  {isTestingEmail ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      Testing Email Config...
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Bug className="w-3 h-3" />
-                      Test Email Configuration
-                    </div>
-                  )}
-                </Button>
-              )}
+
 
               <Button
                 type="submit"
@@ -873,17 +754,7 @@ const UserLogin = () => {
             </Button>
           </div>
           
-          {/* Debug button for development */}
-          {process.env.NODE_ENV === 'development' && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => debugVerificationStatus(resendVerificationEmail)}
-              className="w-full text-xs"
-            >
-              Debug Verification Status
-            </Button>
-          )}
+
         </DialogContent>
       </Dialog>
     </div>

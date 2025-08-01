@@ -1354,55 +1354,132 @@ async def get_nearby_providers(location_request: LocationRequest):
 # Geocode provider location
 @app.post("/providers/{provider_id}/geocode")
 async def geocode_provider_location(provider_id: str):
+    """
+    Geocode a provider's location using their address
+    """
     try:
+        # Get provider data
         async with httpx.AsyncClient() as client:
-            # Get provider
-            response = await client.get(
-                f"{SUPABASE_URL}/rest/v1/providers",
-                headers={
-                    "apikey": SUPABASE_SERVICE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
-                },
-                params={"id": f"eq.{provider_id}", "select": "*"}
-            )
+            response = await client.get(f"{SUPABASE_URL}/rest/v1/providers?id=eq.{provider_id}", 
+                                     headers={"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"})
+            response.raise_for_status()
+            providers = response.json()
             
-            if response.status_code != 200 or not response.json():
+            if not providers:
                 raise HTTPException(status_code=404, detail="Provider not found")
             
-            provider = response.json()[0]
+            provider = providers[0]
+            location = provider.get("location", "")
             
-            if not provider.get("location"):
+            if not location:
                 raise HTTPException(status_code=400, detail="Provider has no location to geocode")
             
             # Geocode the location
-            coords = await geocode_address_enhanced(provider["location"])
+            coords = await geocode_address_enhanced(location)
             
             if not coords:
-                raise HTTPException(status_code=400, detail="Could not geocode the provided location")
+                raise HTTPException(status_code=400, detail="Could not geocode provider location")
             
-            lat, lon = coords
+            lat, lng = coords
             
             # Update provider with coordinates
             update_response = await client.patch(
                 f"{SUPABASE_URL}/rest/v1/providers?id=eq.{provider_id}",
-                headers={
-                    "apikey": SUPABASE_SERVICE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={"latitude": lat, "longitude": lon}
+                headers={"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}", "Content-Type": "application/json"},
+                json={"latitude": lat, "longitude": lng}
             )
-            
-            if update_response.status_code not in [200, 204]:
-                raise HTTPException(status_code=500, detail="Failed to update provider coordinates")
+            update_response.raise_for_status()
             
             return {
                 "provider_id": provider_id,
+                "location": location,
                 "latitude": lat,
-                "longitude": lon,
-                "address": provider["location"]
+                "longitude": lng,
+                "message": "Location geocoded successfully"
             }
             
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
     except Exception as e:
-        print(f"EXCEPTION in geocode_provider_location: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") 
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Google Maps Autocomplete Endpoints
+@app.get("/api/google-maps/autocomplete")
+async def google_maps_autocomplete(
+    input: str,
+    types: str = "geocode",
+    components: Optional[str] = "country:pk"
+):
+    """
+    Proxy for Google Maps Places Autocomplete API
+    """
+    try:
+        url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        params = {
+            "input": input,
+            "types": types,
+            "key": GOOGLE_MAPS_API_KEY
+        }
+        
+        if components:
+            params["components"] = components
+            
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            return response.json()
+            
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/google-maps/place-details")
+async def google_maps_place_details(
+    place_id: str,
+    fields: str = "geometry"
+):
+    """
+    Proxy for Google Maps Place Details API
+    """
+    try:
+        url = "https://maps.googleapis.com/maps/api/place/details/json"
+        params = {
+            "place_id": place_id,
+            "fields": fields,
+            "key": GOOGLE_MAPS_API_KEY
+        }
+            
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            return response.json()
+            
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/google-maps/geocode")
+async def google_maps_geocode(
+    address: str
+):
+    """
+    Proxy for Google Maps Geocoding API
+    """
+    try:
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        params = {
+            "address": address,
+            "key": GOOGLE_MAPS_API_KEY
+        }
+            
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            return response.json()
+            
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 

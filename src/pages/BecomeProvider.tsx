@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { CheckCircle, Star, Users, TrendingUp, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Navigation } from "@/components/ui/navigation";
@@ -10,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import Select from "react-select";
 import { geocodeAddress } from "@/lib/locationUtils";
+import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
+import { AlertCircle, Upload, Trash2, Plus } from "lucide-react";
 
 const benefits = [
   {
@@ -106,31 +110,62 @@ const SERVICE_CATEGORIES = [
 ];
 
 const BecomeProvider = () => {
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  const [jobsPricing, setJobsPricing] = useState<Record<string, Record<string, string>>>({});
+  const [priceErrors, setPriceErrors] = useState<Record<string, Record<string, string>>>({});
+  const [locationCoordinates, setLocationCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
-    service: "",
+    cnic: "",
     experience: "",
     location: "",
-    about: ""
+    about: "",
+    cnicFront: null as File | null,
+    cnicBack: null as File | null,
+    profileImage: null as File | null,
   });
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedServices, setSelectedServices] = useState<any[]>([]);
-  const [jobsPricing, setJobsPricing] = useState<any>({});
-  const [priceErrors, setPriceErrors] = useState<any>({});
-  const [cnicFront, setCnicFront] = useState<File | null>(null);
-  const [cnicBack, setCnicBack] = useState<File | null>(null);
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setIsAuthenticated(true);
+        setIsLoading(false);
+      } else {
+        setIsLoading(false);
+      }
+    };
+    checkAuth();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle location selection from Google Maps autocomplete
+  const handleLocationSelect = (location: { lat: number; lng: number; address: string }) => {
+    setLocationCoordinates({ lat: location.lat, lng: location.lng });
+    setFormData(prev => ({ ...prev, location: location.address }));
+  };
+
+  // Handle manual location input
+  const handleLocationChange = (value: string) => {
+    setFormData(prev => ({ ...prev, location: value }));
+    // Clear coordinates when user manually types
+    if (locationCoordinates) {
+      setLocationCoordinates(null);
+    }
   };
 
   const handleCategoryChange = (category: string) => {
@@ -218,163 +253,219 @@ const BecomeProvider = () => {
 
   const handleCnicFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setCnicFront(e.target.files[0]);
+      setFormData(prev => ({ ...prev, cnicFront: e.target.files[0] }));
     }
   };
 
   const handleCnicBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setCnicBack(e.target.files[0]);
+      setFormData(prev => ({ ...prev, cnicBack: e.target.files[0] }));
     }
   };
 
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setProfileImage(e.target.files[0]);
+      setFormData(prev => ({ ...prev, profileImage: e.target.files[0] }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    try {
-      // Validate form data
+    if (step === 1) {
       if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.location) {
         toast({
           title: "Missing Information",
           description: "Please fill in all required fields.",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
-
-      if (selectedServices.length === 0) {
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
         toast({
-          title: "No Services Selected",
-          description: "Please select at least one service category.",
-          variant: "destructive"
+          title: "Invalid Email",
+          description: "Please enter a valid email address.",
+          variant: "destructive",
         });
         return;
       }
 
-      // Geocode the location
-      let locationCoordinates = null;
-      if (formData.location) {
+      // Validate phone number (Pakistani format)
+      const phoneRegex = /^(\+92|0)?[0-9]{10}$/;
+      if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Please enter a valid Pakistani phone number.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Geocode the location if not already done by autocomplete
+      let finalLocationCoordinates = locationCoordinates;
+      if (formData.location && !locationCoordinates) {
         try {
-          locationCoordinates = await geocodeAddress(formData.location);
-          if (locationCoordinates) {
-            console.log("Geocoded location:", locationCoordinates);
+          const coords = await geocodeAddress(formData.location);
+          if (coords) {
+            finalLocationCoordinates = { lat: coords.latitude, lng: coords.longitude };
+            console.log("Geocoded location:", coords);
           }
         } catch (error) {
           console.error("Geocoding error:", error);
-          // Continue without coordinates - they can be added later
         }
       }
 
-      // Upload profile image
-      let profileImageUrl = "";
-      if (profileImage) {
-        const { data: profileData, error: profileError } = await supabase.storage
-          .from('provider-uploads')
-          .upload(`profile/${formData.email}_${Date.now()}`, profileImage);
-        
-        if (profileError) throw profileError;
-        profileImageUrl = `${supabase.storage.from('provider-uploads').getPublicUrl(`profile/${formData.email}_${Date.now()}`).data.publicUrl}`;
+      setStep(2);
+      return;
+    }
+
+    if (step === 2) {
+      if (selectedServices.length === 0) {
+        toast({
+          title: "No Services Selected",
+          description: "Please select at least one service you offer.",
+          variant: "destructive",
+        });
+        return;
       }
-      
-      // Upload CNIC front
-      let cnicFrontUrl = null;
-      if (cnicFront) {
-        const { data: cnicFrontData, error: cnicFrontError } = await supabase.storage
-          .from('provider-uploads')
-          .upload(`cnic/front/${formData.email}_front_${Date.now()}`, cnicFront);
-        
-        if (cnicFrontError) throw cnicFrontError;
-        cnicFrontUrl = `${supabase.storage.from('provider-uploads').getPublicUrl(`cnic/front/${formData.email}_front_${Date.now()}`).data.publicUrl}`;
-      }
-      
-      // Upload CNIC back
-      let cnicBackUrl = null;
-      if (cnicBack) {
-        const { data: cnicBackData, error: cnicBackError } = await supabase.storage
-          .from('provider-uploads')
-          .upload(`cnic/back/${formData.email}_back_${Date.now()}`, cnicBack);
-        
-        if (cnicBackError) throw cnicBackError;
-        cnicBackUrl = `${supabase.storage.from('provider-uploads').getPublicUrl(`cnic/back/${formData.email}_back_${Date.now()}`).data.publicUrl}`;
-      }
-      
-      // Compose jobs pricing data for backend
-      const jobsPricingToSave = selectedServices.reduce((acc: any, service: any) => {
+
+      // Validate pricing
+      let hasErrors = false;
+      const newPriceErrors: Record<string, Record<string, string>> = {};
+
+      selectedServices.forEach((service: any) => {
         const cat = SERVICE_CATEGORIES.find(c => c.key === service.value);
-        if (!cat) return acc;
-        const catJobs = cat.jobs || [];
-        acc[cat.key] = [
-          ...catJobs
-            .filter(job => jobsPricing[cat.key]?.[job])
-            .map(job => ({ job, price: Number(jobsPricing[cat.key][job]) })),
-          ...((jobsPricing[cat.key]?.customJobs || []).filter((c: any) => c.job && c.price).map((c: any) => ({ job: c.job, price: Number(c.price) })) || [])
-        ];
-        return acc;
-      }, {});
-      
-      const pendingRequestData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        service_category: selectedServices.map(s => s.value),
-        bio: formData.about,
-        experience: formData.experience,
-        location: formData.location,
-        latitude: locationCoordinates?.latitude || null,
-        longitude: locationCoordinates?.longitude || null,
-        profile_image_url: profileImageUrl,
-        cnic_front_url: cnicFrontUrl,
-        cnic_back_url: cnicBackUrl,
-        jobs_pricing: jobsPricingToSave
-      };
-      
-      const response = await fetch("http://localhost:8000/pending-requests/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pendingRequestData)
+        if (!cat) return;
+
+        newPriceErrors[cat.key] = {};
+        cat.jobs.forEach((job) => {
+          const price = jobsPricing[cat.key]?.[job];
+          if (!price || parseFloat(price) < 100) {
+            newPriceErrors[cat.key][job] = "Price must be at least 100 PKR";
+            hasErrors = true;
+          }
+        });
+
+        // Check custom jobs
+        (jobsPricing[cat.key]?.customJobs || []).forEach((custom: any, idx: number) => {
+          if (!custom.job.trim()) {
+            newPriceErrors[cat.key][`custom_${idx}`] = "Job name is required";
+            hasErrors = true;
+          }
+          if (!custom.price || parseFloat(custom.price) < 100) {
+            newPriceErrors[cat.key][`custom_price_${idx}`] = "Price must be at least 100 PKR";
+            hasErrors = true;
+          }
+        });
       });
-      
-      if (!response.ok) throw new Error(await response.text());
-      
-      toast({
-        title: "Application Submitted Successfully!",
-        description: "Your application has been submitted and is under review. We'll notify you once it's approved.",
-      });
-      
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        service: "",
-        experience: "",
-        location: "",
-        about: ""
-      });
-      
-      // Reset other form states
-      setSelectedServices([]);
-      setJobsPricing({});
-      setCnicFront(null);
-      setCnicBack(null);
-      setProfileImage(null);
-      
-    } catch (err: any) {
-      toast({
-        title: "Submission Failed",
-        description: err.message || "Could not submit application. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+
+      if (hasErrors) {
+        setPriceErrors(newPriceErrors);
+        toast({
+          title: "Pricing Errors",
+          description: "Please fix the pricing errors before continuing.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setStep(3);
+      return;
+    }
+
+    if (step === 3) {
+      if (!formData.cnicFront || !formData.cnicBack || !formData.profileImage) {
+        toast({
+          title: "Missing Documents",
+          description: "Please upload all required documents.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        // Upload images
+        const cnicFrontUrl = await uploadImage(formData.cnicFront, `cnic-front/${Date.now()}`);
+        const cnicBackUrl = await uploadImage(formData.cnicBack, `cnic-back/${Date.now()}`);
+        const profileImageUrl = await uploadImage(formData.profileImage, `profile-images/${Date.now()}`);
+
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+
+        // Create provider profile
+        const { data: provider, error: providerError } = await supabase
+          .from('providers')
+          .insert({
+            user_id: user.id,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            cnic: formData.cnic,
+            experience: formData.experience,
+            location: formData.location,
+            latitude: finalLocationCoordinates?.lat || null,
+            longitude: finalLocationCoordinates?.lng || null,
+            about: formData.about,
+            cnic_front_url: cnicFrontUrl,
+            cnic_back_url: cnicBackUrl,
+            profile_image_url: profileImageUrl,
+            is_verified: false,
+            status: 'pending'
+          })
+          .select()
+          .single();
+
+        if (providerError) {
+          throw providerError;
+        }
+
+        // Create service offerings
+        for (const service of selectedServices) {
+          const cat = SERVICE_CATEGORIES.find(c => c.key === service.value);
+          if (!cat) continue;
+
+          const { error: serviceError } = await supabase
+            .from('service_offerings')
+            .insert({
+              provider_id: provider.id,
+              service_category: cat.key,
+              jobs_pricing: jobsPricing[cat.key] || {}
+            });
+
+          if (serviceError) {
+            console.error('Error creating service offering:', serviceError);
+          }
+        }
+
+        toast({
+          title: "Application Submitted!",
+          description: "Your provider application has been submitted successfully. We'll review it and get back to you soon.",
+        });
+
+        // Navigate to provider dashboard after a delay
+        setTimeout(() => {
+          navigate('/provider-dashboard');
+        }, 2000);
+
+      } catch (error) {
+        console.error('Error submitting application:', error);
+        toast({
+          title: "Error",
+          description: "Failed to submit application. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -610,15 +701,14 @@ const BecomeProvider = () => {
                         <label htmlFor="location" className="block text-sm font-medium text-foreground mb-2">
                           Service Area *
                         </label>
-                        <Input
-                          id="location"
-                          name="location"
-                          type="text"
-                          required
+                        <GoogleMapsAutocomplete
                           value={formData.location}
-                          onChange={handleChange}
-                          className="bg-card border-border"
+                          onChange={handleLocationChange}
+                          onLocationSelect={handleLocationSelect}
                           placeholder="City, State or ZIP code"
+                          label=""
+                          required={true}
+                          className=""
                         />
                       </div>
                     </div>
@@ -750,8 +840,8 @@ const BecomeProvider = () => {
                     </Button>
                   )}
                   {step === 3 && (
-                    <Button type="submit" variant="default" size="lg" className="px-8" disabled={isLoading || hasPriceErrors}>
-                      {isLoading ? "Submitting..." : "Submit"}
+                    <Button type="submit" variant="default" size="lg" className="px-8" disabled={isSubmitting || hasPriceErrors}>
+                      {isSubmitting ? "Submitting..." : "Submit"}
                     </Button>
                   )}
                 </div>

@@ -23,6 +23,10 @@ import UserDashboard from "./pages/UserDashboard";
 import UserRouteGuard from "./components/UserRouteGuard";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import CreateLiveRequest from "./pages/CreateLiveRequest";
+import UserUrgentRequests from "./pages/UserUrgentRequests";
+import ProviderNotifications from "./pages/ProviderNotifications";
+import TestLocationAutocomplete from "./pages/TestLocationAutocomplete";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +86,31 @@ function AnimatedRoutes() {
               </UserRouteGuard>
             } 
           />
+          <Route 
+            path="/create-live-request" 
+            element={
+              <UserRouteGuard>
+                <CreateLiveRequest />
+              </UserRouteGuard>
+            } 
+          />
+          <Route 
+            path="/user-urgent-requests" 
+            element={
+              <UserRouteGuard>
+                <UserUrgentRequests />
+              </UserRouteGuard>
+            } 
+          />
+          <Route 
+            path="/provider-notifications" 
+            element={
+              <ProviderRouteGuard>
+                <ProviderNotifications />
+              </ProviderRouteGuard>
+            } 
+          />
+          <Route path="/test-location-autocomplete" element={<TestLocationAutocomplete />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </motion.div>

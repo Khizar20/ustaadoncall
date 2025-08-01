@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
 import { 
   MapPin, 
   Search, 
@@ -31,12 +32,12 @@ export default function LocationPicker({
   const [showMap, setShowMap] = useState(false);
   const { toast } = useToast();
 
-  // Auto-geocode when location changes
+  // Auto-geocode when location changes (fallback for manual entry)
   useEffect(() => {
-    if (value && value.length > 5) {
+    if (value && value.length > 5 && !coordinates) {
       handleGeocode();
     }
-  }, [value]);
+  }, [value, coordinates]);
 
   const handleGeocode = async () => {
     if (!value.trim()) return;
@@ -99,30 +100,41 @@ export default function LocationPicker({
     }
   };
 
-  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+  // Handle location selection from Google Maps autocomplete
+  const handleLocationSelect = (location: { lat: number; lng: number; address: string }) => {
+    const coords: Location = {
+      latitude: location.lat,
+      longitude: location.lng,
+      address: location.address
+    };
+    setCoordinates(coords);
+    onChange(location.address, coords);
+  };
+
+  // Handle manual location input
+  const handleLocationChange = (newValue: string) => {
+    onChange(newValue);
+    // Clear coordinates when user manually types
+    if (coordinates) {
+      setCoordinates(null);
+    }
   };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="location">Location</Label>
-        <div className="relative">
-          <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            id="location"
-            value={value}
-            onChange={handleLocationChange}
-            placeholder={placeholder}
-            className="pl-10"
-            required={required}
-          />
-          {isGeocoding && (
-            <div className="absolute right-3 top-3">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-            </div>
-          )}
-        </div>
+        
+        {/* Use Google Maps Autocomplete */}
+        <GoogleMapsAutocomplete
+          value={value}
+          onChange={handleLocationChange}
+          onLocationSelect={handleLocationSelect}
+          placeholder={placeholder}
+          label=""
+          required={required}
+          className=""
+        />
       </div>
 
       {/* Location Status */}
@@ -184,9 +196,10 @@ export default function LocationPicker({
 
       {/* Help Text */}
       <div className="text-xs text-muted-foreground">
-        <p>• Enter your full address for automatic geocoding</p>
-        <p>• Use "Manual Coordinates" if automatic geocoding fails</p>
-        <p>• You can proceed without coordinates - they can be added later</p>
+        <p>• Start typing to see location suggestions from Google Maps</p>
+        <p>• Select a suggestion for automatic coordinate detection</p>
+        <p>• Use "Find Coordinates" for manual geocoding</p>
+        <p>• Use "Manual Coordinates" if automatic methods fail</p>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, LogOut, FileText, ChevronDown, Sparkles, Home, Settings, Shield } from "lucide-react";
+import { Menu, X, User, LogOut, FileText, ChevronDown, Sparkles, Home, Settings, Shield, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -255,18 +255,53 @@ export function Navigation() {
                           <User className="w-4 h-4" />
                           <span>Dashboard</span>
                         </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                          onClick={() => {
+                            navigate('/user-urgent-requests');
+                            setShowUserMenu(false);
+                          }}
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                          <span>My Urgent Requests</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                          onClick={() => {
+                            navigate('/create-live-request');
+                            setShowUserMenu(false);
+                          }}
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                          <span>Urgent Request</span>
+                        </Button>
                         {isProvider && (
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
-                            onClick={() => {
-                              navigate('/provider-dashboard');
-                              setShowUserMenu(false);
-                            }}
-                          >
-                            <FileText className="w-4 h-4" />
-                            <span>Provider Dashboard</span>
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                              onClick={() => {
+                                navigate('/provider-dashboard');
+                                setShowUserMenu(false);
+                              }}
+                            >
+                              <FileText className="w-4 h-4" />
+                              <span>Provider Dashboard</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                              onClick={() => {
+                                navigate('/provider-notifications');
+                                setShowUserMenu(false);
+                              }}
+                            >
+                              <AlertCircle className="w-4 h-4" />
+                              <span>Urgent Requests</span>
+                            </Button>
+                          </>
                         )}
                         <div className="border-t border-green-100 my-2"></div>
                         <Button
@@ -404,18 +439,53 @@ export function Navigation() {
                         <User className="w-4 h-4" />
                         Dashboard
                       </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                        onClick={() => {
+                          navigate('/user-urgent-requests');
+                          setIsOpen(false);
+                        }}
+                      >
+                        <AlertCircle className="w-4 h-4" />
+                        My Urgent Requests
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                        onClick={() => {
+                          navigate('/create-live-request');
+                          setIsOpen(false);
+                        }}
+                      >
+                        <AlertCircle className="w-4 h-4" />
+                        Urgent Request
+                      </Button>
                       {isProvider && (
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
-                          onClick={() => {
-                            navigate('/provider-dashboard');
-                            setIsOpen(false);
-                          }}
-                        >
-                          <FileText className="w-4 h-4" />
-                          Provider Dashboard
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            onClick={() => {
+                              navigate('/provider-dashboard');
+                              setIsOpen(false);
+                            }}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Provider Dashboard
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            onClick={() => {
+                              navigate('/provider-notifications');
+                              setIsOpen(false);
+                            }}
+                          >
+                            <AlertCircle className="w-4 h-4" />
+                            Urgent Requests
+                          </Button>
+                        </>
                       )}
                       <Button
                         variant="ghost"

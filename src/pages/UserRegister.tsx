@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import { testUsersTable, checkRLSPolicies } from "@/lib/testUsersTable";
-import { Eye, EyeOff, User, Lock, Mail, Phone, MapPin, ArrowRight, CheckCircle, Bug, Home, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, User, Lock, Mail, Phone, MapPin, ArrowRight, CheckCircle, Home, ArrowLeft } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 
 // Simple password hashing function (in production, use bcrypt or similar)
@@ -33,7 +32,6 @@ const UserRegister = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerificationSent, setIsVerificationSent] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
   const [showBypassOption, setShowBypassOption] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -286,34 +284,7 @@ const UserRegister = () => {
     }
   };
 
-  const handleTestDatabase = async () => {
-    setIsTesting(true);
-    try {
-      console.log("=== RUNNING DATABASE TESTS ===");
-      
-      // Test users table
-      const tableTest = await testUsersTable();
-      console.log("Table test result:", tableTest);
-      
-      // Test RLS policies
-      const rlsTest = await checkRLSPolicies();
-      console.log("RLS test result:", rlsTest);
-      
-      toast({
-        title: "Database Tests Complete",
-        description: "Check the console for detailed test results.",
-      });
-    } catch (error: any) {
-      console.error("❌ Database test error:", error);
-      toast({
-        title: "Database Test Failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsTesting(false);
-    }
-  };
+
 
   // Show success state if registration was successful
   if (isVerificationSent) {
@@ -657,26 +628,7 @@ const UserRegister = () => {
                 )}
               </Button>
 
-              {/* Debug button - remove in production */}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleTestDatabase}
-                disabled={isTesting}
-              >
-                {isTesting ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    Testing Database...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Bug className="w-4 h-4" />
-                    Test Database Connection
-                  </div>
-                )}
-              </Button>
+
             </form>
 
             <div className="mt-6 text-center">
