@@ -14,6 +14,7 @@ import Select from "react-select";
 import { geocodeAddress } from "@/lib/locationUtils";
 import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
 import { AlertCircle, Upload, Trash2, Plus } from "lucide-react";
+import { useLanguageContext } from "@/contexts/LanguageContext";
 
 const benefits = [
   {
@@ -110,6 +111,7 @@ const SERVICE_CATEGORIES = [
 ];
 
 const BecomeProvider = () => {
+  const { t } = useLanguageContext();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -185,13 +187,13 @@ const BecomeProvider = () => {
         [job]: value
       }
     }));
-    setPriceErrors((prev: any) => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [job]: price < 100 ? "Price must be at least 100 PKR" : undefined
-      }
-    }));
+            setPriceErrors((prev: any) => ({
+          ...prev,
+          [category]: {
+            ...prev[category],
+            [job]: price < 100 ? t("Price must be at least 100 PKR") : undefined
+          }
+        }));
   };
 
   const handleCustomJobChange = (category: string, idx: number, field: string, value: string) => {
@@ -207,21 +209,21 @@ const BecomeProvider = () => {
         }
       };
     });
-    if (field === "price") {
-      const price = Number(value);
-      setPriceErrors((prev: any) => {
-        const catErrors = prev[category]?.customJobs || [];
-        const updatedErrors = [...catErrors];
-        updatedErrors[idx] = price < 100 ? "Price must be at least 100 PKR" : undefined;
-        return {
-          ...prev,
-          [category]: {
-            ...prev[category],
-            customJobs: updatedErrors
-          }
-        };
-      });
-    }
+            if (field === "price") {
+          const price = Number(value);
+          setPriceErrors((prev: any) => {
+            const catErrors = prev[category]?.customJobs || [];
+            const updatedErrors = [...catErrors];
+            updatedErrors[idx] = price < 100 ? t("Price must be at least 100 PKR") : undefined;
+            return {
+              ...prev,
+              [category]: {
+                ...prev[category],
+                customJobs: updatedErrors
+              }
+            };
+          });
+        }
   };
 
   const addCustomJob = (category: string) => {
@@ -275,8 +277,8 @@ const BecomeProvider = () => {
     if (step === 1) {
       if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.location) {
         toast({
-          title: "Missing Information",
-          description: "Please fill in all required fields.",
+          title: t("Missing Information"),
+          description: t("Please fill in all required fields."),
           variant: "destructive",
         });
         return;
@@ -286,8 +288,8 @@ const BecomeProvider = () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
         toast({
-          title: "Invalid Email",
-          description: "Please enter a valid email address.",
+          title: t("Invalid Email"),
+          description: t("Please enter a valid email address."),
           variant: "destructive",
         });
         return;
@@ -297,8 +299,8 @@ const BecomeProvider = () => {
       const phoneRegex = /^(\+92|0)?[0-9]{10}$/;
       if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
         toast({
-          title: "Invalid Phone Number",
-          description: "Please enter a valid Pakistani phone number.",
+          title: t("Invalid Phone Number"),
+          description: t("Please enter a valid Pakistani phone number."),
           variant: "destructive",
         });
         return;
@@ -325,8 +327,8 @@ const BecomeProvider = () => {
     if (step === 2) {
       if (selectedServices.length === 0) {
         toast({
-          title: "No Services Selected",
-          description: "Please select at least one service you offer.",
+          title: t("No Services Selected"),
+          description: t("Please select at least one service you offer."),
           variant: "destructive",
         });
         return;
@@ -344,7 +346,7 @@ const BecomeProvider = () => {
         cat.jobs.forEach((job) => {
           const price = jobsPricing[cat.key]?.[job];
           if (!price || parseFloat(price) < 100) {
-            newPriceErrors[cat.key][job] = "Price must be at least 100 PKR";
+            newPriceErrors[cat.key][job] = t("Price must be at least 100 PKR");
             hasErrors = true;
           }
         });
@@ -352,11 +354,11 @@ const BecomeProvider = () => {
         // Check custom jobs
         (jobsPricing[cat.key]?.customJobs || []).forEach((custom: any, idx: number) => {
           if (!custom.job.trim()) {
-            newPriceErrors[cat.key][`custom_${idx}`] = "Job name is required";
+            newPriceErrors[cat.key][`custom_${idx}`] = t("Job name is required");
             hasErrors = true;
           }
           if (!custom.price || parseFloat(custom.price) < 100) {
-            newPriceErrors[cat.key][`custom_price_${idx}`] = "Price must be at least 100 PKR";
+            newPriceErrors[cat.key][`custom_price_${idx}`] = t("Price must be at least 100 PKR");
             hasErrors = true;
           }
         });
@@ -365,8 +367,8 @@ const BecomeProvider = () => {
       if (hasErrors) {
         setPriceErrors(newPriceErrors);
         toast({
-          title: "Pricing Errors",
-          description: "Please fix the pricing errors before continuing.",
+          title: t("Pricing Errors"),
+          description: t("Please fix the pricing errors before continuing."),
           variant: "destructive",
         });
         return;
@@ -379,8 +381,8 @@ const BecomeProvider = () => {
     if (step === 3) {
       if (!formData.cnicFront || !formData.cnicBack || !formData.profileImage) {
         toast({
-          title: "Missing Documents",
-          description: "Please upload all required documents.",
+          title: t("Missing Documents"),
+          description: t("Please upload all required documents."),
           variant: "destructive",
         });
         return;
@@ -447,8 +449,8 @@ const BecomeProvider = () => {
         }
 
         toast({
-          title: "Application Submitted!",
-          description: "Your provider application has been submitted successfully. We'll review it and get back to you soon.",
+          title: t("Application Submitted!"),
+          description: t("Your provider application has been submitted successfully. We'll review it and get back to you soon."),
         });
 
         // Navigate to provider dashboard after a delay
@@ -459,8 +461,8 @@ const BecomeProvider = () => {
       } catch (error) {
         console.error('Error submitting application:', error);
         toast({
-          title: "Error",
-          description: "Failed to submit application. Please try again.",
+          title: t("Error"),
+          description: t("Failed to submit application. Please try again."),
           variant: "destructive",
         });
       } finally {
@@ -486,19 +488,22 @@ const BecomeProvider = () => {
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center">
             <h1 className="font-heading font-bold text-hero text-foreground mb-6">
-              JOIN OUR<br />
-              EXPERT<br />
-              NETWORK
+              {t("JOIN OUR EXPERT NETWORK").split(' ').map((word, index) => (
+                <span key={index}>
+                  {word}
+                  {index < 2 && <br />}
+                </span>
+              ))}
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8">
-              Turn your skills into a thriving business. Join thousands of professionals who've grown their income with UstaadOnCall.
+              {t("Turn your skills into a thriving business")}. {t("Join thousands of professionals who've grown their income with UstaadOnCall")}.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button variant="hero" size="lg" onClick={() => document.getElementById('application')?.scrollIntoView({ behavior: 'smooth' })}>
-                Start Your Application
+                {t("Start Your Application")}
               </Button>
               <Button variant="outline" size="lg" onClick={() => document.getElementById('benefits')?.scrollIntoView({ behavior: 'smooth' })}>
-                Learn More
+                {t("Learn More")}
               </Button>
             </div>
           </div>
@@ -510,10 +515,10 @@ const BecomeProvider = () => {
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="font-heading font-bold text-display text-foreground mb-4">
-              Why Choose UstaadOnCall?
+              {t("Why Choose UstaadOnCall?")}
             </h2>
             <p className="text-xl text-muted-foreground">
-              We provide everything you need to succeed as a service professional
+              {t("We provide everything you need to succeed as a service professional")}
             </p>
           </div>
           
@@ -527,8 +532,8 @@ const BecomeProvider = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <benefit.icon className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg text-foreground mb-3">{benefit.title}</h3>
-                <p className="text-muted-foreground">{benefit.description}</p>
+                <h3 className="font-semibold text-lg text-foreground mb-3">{t(benefit.title)}</h3>
+                <p className="text-muted-foreground">{t(benefit.description)}</p>
               </Card>
             ))}
           </div>
@@ -540,10 +545,10 @@ const BecomeProvider = () => {
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="font-heading font-bold text-display text-foreground mb-4">
-              Success by the Numbers
+              {t("Success by the Numbers")}
             </h2>
             <p className="text-xl text-muted-foreground">
-              See how our providers are thriving
+              {t("See how our providers are thriving")}
             </p>
           </div>
           
@@ -552,21 +557,21 @@ const BecomeProvider = () => {
               <div className="font-heading font-bold text-5xl md:text-6xl text-primary mb-2">
                 $2,500
               </div>
-              <p className="text-lg text-muted-foreground font-medium">Average Monthly Earnings</p>
+              <p className="text-lg text-muted-foreground font-medium">{t("Average Monthly Earnings")}</p>
             </div>
             
             <div>
               <div className="font-heading font-bold text-5xl md:text-6xl text-primary mb-2">
                 15+
               </div>
-              <p className="text-lg text-muted-foreground font-medium">Jobs Per Week</p>
+              <p className="text-lg text-muted-foreground font-medium">{t("Jobs Per Week")}</p>
             </div>
             
             <div>
               <div className="font-heading font-bold text-5xl md:text-6xl text-primary mb-2">
                 4.8★
               </div>
-              <p className="text-lg text-muted-foreground font-medium">Average Provider Rating</p>
+              <p className="text-lg text-muted-foreground font-medium">{t("Average Provider Rating")}</p>
             </div>
           </div>
         </div>
@@ -577,10 +582,10 @@ const BecomeProvider = () => {
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="font-heading font-bold text-display text-foreground mb-4">
-              Requirements
+              {t("Requirements")}
             </h2>
             <p className="text-xl text-muted-foreground">
-              What you need to get started
+              {t("What you need to get started")}
             </p>
           </div>
           
@@ -588,7 +593,7 @@ const BecomeProvider = () => {
             {requirements.map((requirement, index) => (
               <div key={index} className="flex items-start gap-3">
                 <CheckCircle className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />
-                <p className="text-foreground">{requirement}</p>
+                <p className="text-foreground">{t(requirement)}</p>
               </div>
             ))}
           </div>
@@ -600,10 +605,10 @@ const BecomeProvider = () => {
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="font-heading font-bold text-display text-foreground mb-4">
-              Ready to Get Started?
+              {t("Ready to Get Started?")}
             </h2>
             <p className="text-xl text-muted-foreground">
-              Complete your application in just a few steps
+              {t("Complete your application in just a few steps")}
             </p>
           </div>
           
@@ -612,11 +617,11 @@ const BecomeProvider = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {step === 1 && (
                   <>
-                    <h3 className="text-xl font-bold mb-4">Personal Information</h3>
+                    <h3 className="text-xl font-bold mb-4">{t("Personal Information")}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="firstName" className="block text-sm font-medium text-foreground mb-2">
-                          First Name *
+                          {t("First Name")} *
                         </label>
                         <Input
                           id="firstName"
@@ -626,12 +631,12 @@ const BecomeProvider = () => {
                           value={formData.firstName}
                           onChange={handleChange}
                           className="bg-card border-border"
-                          placeholder="Your first name"
+                          placeholder={t("Your first name")}
                         />
                       </div>
                       <div>
                         <label htmlFor="lastName" className="block text-sm font-medium text-foreground mb-2">
-                          Last Name *
+                          {t("Last Name")} *
                         </label>
                         <Input
                           id="lastName"
@@ -641,14 +646,14 @@ const BecomeProvider = () => {
                           value={formData.lastName}
                           onChange={handleChange}
                           className="bg-card border-border"
-                          placeholder="Your last name"
+                          placeholder={t("Your last name")}
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                          Email Address *
+                          {t("Email Address")} *
                         </label>
                         <Input
                           id="email"
@@ -658,12 +663,12 @@ const BecomeProvider = () => {
                           value={formData.email}
                           onChange={handleChange}
                           className="bg-card border-border"
-                          placeholder="your.email@example.com"
+                          placeholder={t("your.email@example.com")}
                         />
                       </div>
                       <div>
                         <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
-                          Phone Number *
+                          {t("Phone Number")} *
                         </label>
                         <Input
                           id="phone"
@@ -673,14 +678,14 @@ const BecomeProvider = () => {
                           value={formData.phone}
                           onChange={handleChange}
                           className="bg-card border-border"
-                          placeholder="(555) 123-4567"
+                          placeholder={t("(555) 123-4567")}
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="experience" className="block text-sm font-medium text-foreground mb-2">
-                          Years of Experience *
+                          {t("Years of Experience")} *
                         </label>
                         <select
                           id="experience"
@@ -690,22 +695,22 @@ const BecomeProvider = () => {
                           onChange={handleChange}
                           className="w-full h-10 px-3 bg-card border border-border rounded-md text-foreground"
                         >
-                          <option value="">Select experience</option>
-                          <option value="1-2">1-2 years</option>
-                          <option value="3-5">3-5 years</option>
-                          <option value="6-10">6-10 years</option>
-                          <option value="10+">10+ years</option>
+                          <option value="">{t("Select experience")}</option>
+                          <option value="1-2">{t("1-2 years")}</option>
+                          <option value="3-5">{t("3-5 years")}</option>
+                          <option value="6-10">{t("6-10 years")}</option>
+                          <option value="10+">{t("10+ years")}</option>
                         </select>
                       </div>
                       <div>
                         <label htmlFor="location" className="block text-sm font-medium text-foreground mb-2">
-                          Service Area *
+                          {t("Service Area")} *
                         </label>
                         <GoogleMapsAutocomplete
                           value={formData.location}
                           onChange={handleLocationChange}
                           onLocationSelect={handleLocationSelect}
-                          placeholder="City, State or ZIP code"
+                          placeholder={t("City, State or ZIP code")}
                           label=""
                           required={true}
                           className=""
@@ -714,7 +719,7 @@ const BecomeProvider = () => {
                     </div>
                     <div>
                       <label htmlFor="about" className="block text-sm font-medium text-foreground mb-2">
-                        Tell Us About Yourself *
+                        {t("Tell Us About Yourself")} *
                       </label>
                       <Textarea
                         id="about"
@@ -723,7 +728,7 @@ const BecomeProvider = () => {
                         value={formData.about}
                         onChange={handleChange}
                         className="bg-card border-border min-h-[120px]"
-                        placeholder="Describe your experience, specialties, and what makes you a great service provider..."
+                        placeholder={t("Describe your experience, specialties, and what makes you a great service provider...")}
                       />
                     </div>
                   </>
@@ -731,20 +736,20 @@ const BecomeProvider = () => {
                 
                 {step === 2 && (
                   <>
-                    <h3 className="text-xl font-bold mb-4">Services & Pricing</h3>
+                    <h3 className="text-xl font-bold mb-4">{t("Services & Pricing")}</h3>
                     <div>
                       <label htmlFor="services" className="block text-sm font-medium text-foreground mb-2">
-                        Select Service(s) You Offer *
+                        {t("Select Service(s) You Offer")} *
                       </label>
                       <Select
                         id="services"
                         isMulti
                         name="services"
-                        options={SERVICE_CATEGORIES.filter(cat => cat.key !== "other").map(cat => ({ value: cat.key, label: cat.label }))}
+                        options={SERVICE_CATEGORIES.filter(cat => cat.key !== "other").map(cat => ({ value: cat.key, label: t(cat.label) }))}
                         value={selectedServices}
                         onChange={(newValue) => setSelectedServices(newValue as any[])}
                         classNamePrefix="react-select"
-                        placeholder="Select one or more services"
+                        placeholder={t("Select one or more services")}
                       />          
                     </div>
                     <div className="space-y-4">
@@ -753,33 +758,33 @@ const BecomeProvider = () => {
                         if (!cat) return null;
                         return (
                           <div key={cat.key} className="border p-4 rounded-md mb-4 mt-4">
-                            <div className="font-semibold mb-2">{cat.label} Jobs & Pricing</div>
+                            <div className="font-semibold mb-2">{t(cat.label)} {t("Jobs & Pricing")}</div>
                             {cat.jobs.map((job) => (
                               <div key={job} className="flex items-center space-x-2">
-                                <span className="w-48">{job}</span>
+                                <span className="w-48">{t(job)}</span>
                                 <Input
                                   type="number"
                                   min="100"
-                                  placeholder="Price (PKR)"
+                                  placeholder={t("Price (PKR)")}
                                   value={jobsPricing[cat.key]?.[job] || ""}
                                   onChange={e => handleJobPriceChange(cat.key, job, e.target.value)}
                                   className="w-32"
                                 />
                                 {priceErrors[cat.key]?.[job] && (
-                                  <span className="text-red-500 text-xs ml-2">{priceErrors[cat.key][job]}</span>
+                                  <span className="text-red-500 text-xs ml-2">{t(priceErrors[cat.key][job])}</span>
                                 )}
                               </div>
                             ))}
                             {/* Custom jobs */}
                             <div className="mt-2">
                               <Button type="button" size="sm" onClick={() => addCustomJob(cat.key)}>
-                                + Add Other Job
+                                + {t("Add Other Job")}
                               </Button>
                               {(jobsPricing[cat.key]?.customJobs || []).map((custom: any, idx: number) => (
                                 <div key={idx} className="flex items-center space-x-2 mt-2">
                                   <Input
                                     type="text"
-                                    placeholder="Job Name"
+                                    placeholder={t("Job Name")}
                                     value={custom.job}
                                     onChange={e => handleCustomJobChange(cat.key, idx, "job", e.target.value)}
                                     className="w-48"
@@ -787,7 +792,7 @@ const BecomeProvider = () => {
                                   <Input
                                     type="number"
                                     min="100"
-                                    placeholder="Price (PKR)"
+                                    placeholder={t("Price (PKR)")}
                                     value={custom.price}
                                     onChange={e => handleCustomJobChange(cat.key, idx, "price", e.target.value)}
                                     className="w-32"
@@ -796,7 +801,7 @@ const BecomeProvider = () => {
                                     ×
                                   </Button>
                                   {priceErrors[cat.key]?.customJobs?.[idx] && (
-                                    <span className="text-red-500 text-xs ml-2">{priceErrors[cat.key].customJobs[idx]}</span>
+                                    <span className="text-red-500 text-xs ml-2">{t(priceErrors[cat.key].customJobs[idx])}</span>
                                   )}
                                 </div>
                               ))}
@@ -810,18 +815,18 @@ const BecomeProvider = () => {
                 
                 {step === 3 && (
                   <>
-                    <h3 className="text-xl font-bold mb-4">Identity Verification</h3>
+                    <h3 className="text-xl font-bold mb-4">{t("Identity Verification")}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">CNIC Front Image *</label>
+                        <label className="block text-sm font-medium text-foreground mb-2">{t("CNIC Front Image")} *</label>
                         <input type="file" accept="image/*" required onChange={handleCnicFrontChange} />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">CNIC Back Image *</label>
+                        <label className="block text-sm font-medium text-foreground mb-2">{t("CNIC Back Image")} *</label>
                         <input type="file" accept="image/*" required onChange={handleCnicBackChange} />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">Profile Image *</label>
+                        <label className="block text-sm font-medium text-foreground mb-2">{t("Profile Image")} *</label>
                         <input type="file" accept="image/*" required onChange={handleProfileImageChange} />
                       </div>
                     </div>
@@ -831,24 +836,23 @@ const BecomeProvider = () => {
                 <div className="flex justify-between mt-8">
                   {step > 1 && (
                     <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
-                      Back
+                      {t("Back")}
                     </Button>
                   )}
                   {step < 3 && (
                     <Button type="button" variant="default" onClick={() => setStep(step + 1)}>
-                      Next
+                      {t("Next")}
                     </Button>
                   )}
                   {step === 3 && (
                     <Button type="submit" variant="default" size="lg" className="px-8" disabled={isSubmitting || hasPriceErrors}>
-                      {isSubmitting ? "Submitting..." : "Submit"}
+                      {isSubmitting ? t("Submitting...") : t("Submit")}
                     </Button>
                   )}
                 </div>
                 
                 <p className="text-sm text-muted-foreground text-center">
-                  By submitting this application, you agree to our terms of service and privacy policy.
-                  We'll review your application within 48 hours.
+                  {t("By submitting this application, you agree to our terms of service and privacy policy. We'll review your application within 48 hours.")}
                 </p>
               </form>
             </Card>

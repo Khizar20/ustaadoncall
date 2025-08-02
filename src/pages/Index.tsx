@@ -10,6 +10,7 @@ import { ParallaxSection, BackgroundParallax } from "@/components/ui/parallax-se
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import heroImage from "@/assets/hero-services.jpg";
+import { useLanguageContext } from "@/contexts/LanguageContext";
 
 const services = [
   { name: "Plumbing", description: "Professional plumbing services", bookings: "1200+" },
@@ -42,6 +43,7 @@ const testimonials = [
 ];
 
 const Index = () => {
+  const { t } = useLanguageContext();
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll();
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 300]);
@@ -95,7 +97,7 @@ const Index = () => {
                 transition={{ delay: 1.2, duration: 0.8 }}
                 className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mt-6"
               >
-                Book verified professionals for all your service needs. Premium quality delivered to your doorstep.
+                {t("Book verified professionals")}. {t("Premium quality delivered")}.
               </motion.p>
               
               <motion.div 
@@ -110,7 +112,7 @@ const Index = () => {
                 >
                   <Button variant="hero" size="lg" asChild>
                     <Link to="/services">
-                      Book a Trusted Expert
+                      {t("Book a Service")}
                       <motion.div
                         animate={{ x: [0, 5, 0] }}
                         transition={{ repeat: Infinity, duration: 1.5 }}
@@ -125,7 +127,7 @@ const Index = () => {
                   whileTap={{ scale: 0.98 }}
                 >
                   <Button variant="outline" size="lg" asChild>
-                    <Link to="/become-provider">Become a Provider</Link>
+                    <Link to="/become-provider">{t("Become a Provider")}</Link>
                   </Button>
                 </motion.div>
               </motion.div>
@@ -140,10 +142,10 @@ const Index = () => {
           <ScrollReveal>
             <div className="text-center mb-16">
               <h2 className="font-heading font-bold text-display text-foreground mb-4">
-                Premium Services
+                {t("Premium Services")}
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                From home repairs to personal care, our vetted professionals deliver excellence every time.
+                {t("From home repairs to personal care, our vetted professionals deliver excellence every time.")}
               </p>
             </div>
           </ScrollReveal>

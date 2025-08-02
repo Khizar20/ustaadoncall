@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, ArrowRight, Key, User, Mail, Lock, Home, ArrowLeft } from "lucide-react";
+import { useLanguageContext } from "@/contexts/LanguageContext";
 
 // Password hashing function (same as in registration)
 const hashPassword = async (password: string): Promise<string> => {
@@ -21,6 +22,7 @@ const hashPassword = async (password: string): Promise<string> => {
 };
 
 const UserLogin = () => {
+  const { t } = useLanguageContext();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -514,7 +516,7 @@ const UserLogin = () => {
                 className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
-                <span className="font-medium">Back to Home</span>
+                <span className="font-medium">{t("Back")} {t("Home")}</span>
               </Link>
             </div>
 
@@ -550,22 +552,22 @@ const UserLogin = () => {
               >
                 <User className="w-8 h-8 text-primary" />
               </motion.div>
-              <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
+              <CardTitle className="text-2xl font-bold">{t("Welcome Back")}</CardTitle>
               <CardDescription>
-                Sign in to your UstaadOnCall account
+                {t("Sign in to your UstaadOnCall account")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("Email")}</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="email"
                       name="email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder={t("Enter your email")}
                       value={formData.email}
                       onChange={handleChange}
                       className="pl-10"
@@ -575,14 +577,14 @@ const UserLogin = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">{t("Password")}</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="password"
                       name="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder={t("Enter your password")}
                       value={formData.password}
                       onChange={handleChange}
                       className="pl-10 pr-10"

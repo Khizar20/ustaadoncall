@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import LocationPermission from "@/components/LocationPermission";
 import InteractiveGoogleMap from "@/components/InteractiveGoogleMap";
 import MapErrorBoundary from "@/components/MapErrorBoundary";
+import { useLanguageContext } from "@/contexts/LanguageContext";
 
 import { 
   type Location, 
@@ -52,6 +53,7 @@ interface Provider {
 }
 
 const Services = () => {
+  const { t } = useLanguageContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Services");
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -299,7 +301,7 @@ const Services = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search providers, services, or locations..."
+                  placeholder={t("Search providers, services, or locations...")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -314,7 +316,7 @@ const Services = () => {
                 >
                   {serviceCategories.map((category) => (
                     <option key={category} value={category}>
-                      {category}
+                      {t(category)}
                     </option>
                   ))}
                 </select>
@@ -361,10 +363,10 @@ const Services = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-foreground">
-                {locationPermissionGranted ? "All Providers" : "Service Providers"}
+                {locationPermissionGranted ? t("All Providers") : t("Service Provider")}
               </h2>
               <p className="text-muted-foreground">
-                {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} found
+                {filteredProviders.length} {t("Provider")}{filteredProviders.length !== 1 ? 's' : ''} {t("found")}
               </p>
             </div>
 

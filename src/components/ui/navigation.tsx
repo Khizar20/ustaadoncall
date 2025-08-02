@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabaseClient";
+import { useLanguageContext } from "@/contexts/LanguageContext";
+import { LanguageToggle } from "@/components/ui/language-toggle";
 
 const navigationItems = [
   { name: "Home", href: "/", icon: Home },
@@ -33,6 +35,7 @@ export function Navigation() {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguageContext();
 
   // Token management
   const TOKEN_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -174,7 +177,7 @@ export function Navigation() {
                     )}
                   >
                     <Icon className="w-4 h-4" />
-                    {item.name}
+                    {t(item.name)}
                     <motion.div
                       className="absolute inset-0 bg-gradient-to-r from-green-100 to-green-50 rounded-xl"
                       initial={{ scale: 0, opacity: 0 }}
@@ -194,6 +197,7 @@ export function Navigation() {
             transition={{ delay: 0.8, duration: 0.5 }}
             className="hidden lg:flex items-center gap-3"
           >
+            <LanguageToggle />
             {userInfo ? (
               // User is logged in - show user menu
               <div className="relative user-menu">
@@ -213,7 +217,7 @@ export function Navigation() {
                       {userInfo.name}
                     </span>
                     <span className="text-xs text-green-600 font-medium">
-                      {isProvider ? "Provider" : "User"}
+                      {isProvider ? t("Provider") : t("User")}
                     </span>
                   </div>
                   <ChevronDown className={cn(
@@ -253,7 +257,7 @@ export function Navigation() {
                           }}
                         >
                           <User className="w-4 h-4" />
-                          <span>Dashboard</span>
+                          <span>{t("Dashboard")}</span>
                         </Button>
                         <Button
                           variant="ghost"
@@ -264,7 +268,7 @@ export function Navigation() {
                           }}
                         >
                           <AlertCircle className="w-4 h-4" />
-                          <span>My Urgent Requests</span>
+                          <span>{t("My Requests")}</span>
                         </Button>
                         <Button
                           variant="ghost"
@@ -275,7 +279,7 @@ export function Navigation() {
                           }}
                         >
                           <AlertCircle className="w-4 h-4" />
-                          <span>Urgent Request</span>
+                          <span>{t("Urgent Request")}</span>
                         </Button>
                         {isProvider && (
                           <>
@@ -288,7 +292,7 @@ export function Navigation() {
                               }}
                             >
                               <FileText className="w-4 h-4" />
-                              <span>Provider Dashboard</span>
+                              <span>{t("Dashboard")}</span>
                             </Button>
                             <Button
                               variant="ghost"
@@ -309,9 +313,9 @@ export function Navigation() {
                           className="w-full justify-start gap-3 p-3 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={handleLogout}
                         >
-                          <LogOut className="w-4 h-4" />
-                          <span>Logout</span>
-                        </Button>
+                                                  <LogOut className="w-4 h-4" />
+                        <span>{t("Logout")}</span>
+                      </Button>
                       </div>
                     </motion.div>
                   )}
@@ -328,7 +332,7 @@ export function Navigation() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button variant="outline" size="sm" asChild className="rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
-                    <Link to="/user-login">User Login</Link>
+                    <Link to="/user-login">{t("User Login")}</Link>
                   </Button>
                 </motion.div>
                 <motion.div
@@ -339,7 +343,7 @@ export function Navigation() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button variant="outline" size="sm" asChild className="rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
-                    <Link to="/provider-login">Provider Login</Link>
+                    <Link to="/provider-login">{t("Provider Login")}</Link>
                   </Button>
                 </motion.div>
                 <motion.div
@@ -350,7 +354,7 @@ export function Navigation() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button size="sm" asChild className="rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg text-white">
-                    <Link to="/become-provider">Become Provider</Link>
+                    <Link to="/become-provider">{t("Become Provider")}</Link>
                   </Button>
                 </motion.div>
               </div>
@@ -406,11 +410,21 @@ export function Navigation() {
                         onClick={() => setIsOpen(false)}
                       >
                         <Icon className="w-4 h-4" />
-                        {item.name}
+                        {t(item.name)}
                       </Link>
                     </motion.div>
                   );
                 })}
+
+                {/* Mobile Language Toggle - Always Visible */}
+                <div className="border-t border-green-200 pt-6 mt-6">
+                  <div className="px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Language</span>
+                      <LanguageToggle />
+                    </div>
+                  </div>
+                </div>
 
                 {/* Mobile User Menu or Login Buttons */}
                 {userInfo ? (
@@ -437,7 +451,7 @@ export function Navigation() {
                         }}
                       >
                         <User className="w-4 h-4" />
-                        Dashboard
+                        {t("Dashboard")}
                       </Button>
                       <Button
                         variant="ghost"
@@ -448,7 +462,7 @@ export function Navigation() {
                         }}
                       >
                         <AlertCircle className="w-4 h-4" />
-                        My Urgent Requests
+                        {t("My Requests")}
                       </Button>
                       <Button
                         variant="ghost"
@@ -459,7 +473,7 @@ export function Navigation() {
                         }}
                       >
                         <AlertCircle className="w-4 h-4" />
-                        Urgent Request
+                        {t("Urgent Request")}
                       </Button>
                       {isProvider && (
                         <>
@@ -472,7 +486,7 @@ export function Navigation() {
                             }}
                           >
                             <FileText className="w-4 h-4" />
-                            Provider Dashboard
+                            {t("Dashboard")}
                           </Button>
                           <Button
                             variant="ghost"
@@ -483,7 +497,7 @@ export function Navigation() {
                             }}
                           >
                             <AlertCircle className="w-4 h-4" />
-                            Urgent Requests
+                            {t("Urgent Requests")}
                           </Button>
                         </>
                       )}
@@ -496,7 +510,7 @@ export function Navigation() {
                         }}
                       >
                         <LogOut className="w-4 h-4" />
-                        Logout
+                        {t("Logout")}
                       </Button>
                     </div>
                   </div>
@@ -505,17 +519,17 @@ export function Navigation() {
                   <div className="border-t border-green-200 pt-6 mt-6 space-y-3 px-4">
                     <Button variant="outline" size="sm" asChild className="w-full rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
                       <Link to="/user-login" onClick={() => setIsOpen(false)}>
-                        User Login
+                        {t("User Login")}
                       </Link>
                     </Button>
                     <Button variant="outline" size="sm" asChild className="w-full rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
                       <Link to="/provider-login" onClick={() => setIsOpen(false)}>
-                        Provider Login
+                        {t("Provider Login")}
                       </Link>
                     </Button>
                     <Button size="sm" asChild className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg text-white">
                       <Link to="/become-provider" onClick={() => setIsOpen(false)}>
-                        Become Provider
+                        {t("Become Provider")}
                       </Link>
                     </Button>
                   </div>
