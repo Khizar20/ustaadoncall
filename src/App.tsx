@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import Index from "./pages/Index";
 import Services from "./pages/Services";
 import About from "./pages/About";
@@ -39,6 +41,60 @@ const pageVariants = {
 
 function AnimatedRoutes() {
   const location = useLocation();
+  
+  // Handle email verification redirects
+  useEffect(() => {
+    const handleEmailVerification = async () => {
+      // Check for email confirmation parameters in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      
+      const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+      const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+      const type = urlParams.get('type') || hashParams.get('type');
+      
+      if (accessToken && refreshToken && type === 'signup') {
+        try {
+          // Set the session with the tokens from email verification
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (error) {
+            console.error('Error setting session:', error);
+            // Redirect to login page even if there's an error
+            window.location.href = '/user-login';
+            return;
+          }
+          
+          if (data.session) {
+            // Update the user's email_confirmed_at in the database
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ 
+                email_confirmed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', data.session.user.id);
+            
+            if (updateError) {
+              console.error('Error updating email confirmation:', updateError);
+            }
+            
+            // Redirect to login page with success message
+            window.location.href = '/user-login?verified=true';
+          }
+        } catch (error) {
+          console.error('Error handling email verification:', error);
+          // Redirect to login page even if there's an error
+          window.location.href = '/user-login';
+        }
+      }
+    };
+    
+    handleEmailVerification();
+  }, [location]);
   
   return (
     <AnimatePresence mode="wait">

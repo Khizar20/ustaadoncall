@@ -11,27 +11,9 @@ const ProviderRouteGuard = ({ children }: ProviderRouteGuardProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
-  const TOKEN_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
-
   useEffect(() => {
     checkAuthentication();
-    
-    // Set up periodic token check
-    const tokenCheckInterval = setInterval(checkTokenExpiry, 60000); // Check every minute
-    
-    return () => clearInterval(tokenCheckInterval);
   }, []);
-
-  const checkTokenExpiry = () => {
-    const tokenData = localStorage.getItem('provider_token_data');
-    if (tokenData) {
-      const { timestamp } = JSON.parse(tokenData);
-      const now = Date.now();
-      if (now - timestamp > TOKEN_EXPIRY) {
-        handleLogout();
-      }
-    }
-  };
 
   const checkAuthentication = async () => {
     try {
@@ -45,13 +27,7 @@ const ProviderRouteGuard = ({ children }: ProviderRouteGuardProps) => {
         return;
       }
 
-      // Check token expiry
-      const { timestamp } = JSON.parse(tokenData);
-      const now = Date.now();
-      if (now - timestamp > TOKEN_EXPIRY) {
-        handleLogout();
-        return;
-      }
+
 
       // Verify session with Supabase
       const { data: { session }, error } = await supabase.auth.getSession();

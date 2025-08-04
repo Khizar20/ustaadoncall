@@ -56,6 +56,8 @@ class ProviderIn(BaseModel):
     cnic_back: Optional[str] = None
     is_verified: Optional[bool] = False
     jobs_pricing: Optional[dict] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
 
 class ProviderOut(ProviderIn):
     id: str
@@ -783,7 +785,9 @@ async def update_pending_request(request_id: str, status_update: dict, current_a
                     "is_verified": True,
                     "jobs_pricing": pending_request.get("jobs_pricing", {}),
                     "rating": 0,
-                    "reviews_count": 0
+                    "reviews_count": 0,
+                    "email": pending_request.get("email"),
+                    "phone": pending_request.get("phone")
                 }
                 
                 print(f"Creating provider with data: {provider_data}")

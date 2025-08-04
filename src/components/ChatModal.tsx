@@ -47,7 +47,7 @@ interface ChatModalProps {
   bookingId: string;
   currentUserId: string;
   currentUserType: 'user' | 'provider';
-  otherPartyName: string;
+  otherPartyName?: string;
   otherPartyImage?: string;
 }
 
@@ -66,6 +66,7 @@ const ChatModal = ({
   const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [sendingMessageId, setSendingMessageId] = useState<string | null>(null);
+  const [fetchedOtherPartyName, setFetchedOtherPartyName] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -78,9 +79,57 @@ const ChatModal = ({
     scrollToBottom();
   }, [messages]);
 
+  // Fetch booking details to get other party name
+  useEffect(() => {
+    if (!isOpen || !bookingId) return;
+
+    const fetchBookingDetails = async () => {
+      try {
+        console.log('🔔 [CHAT_MODAL] Fetching booking details for:', bookingId);
+        
+        const { data: booking, error } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            users (name),
+            providers (name)
+          `)
+          .eq('id', bookingId)
+          .single();
+
+        if (error) {
+          console.error('❌ [CHAT_MODAL] Error fetching booking:', error);
+          return;
+        }
+
+        if (booking) {
+          console.log('🔔 [CHAT_MODAL] Booking details:', booking);
+          
+          // Determine other party name based on current user type
+          let otherParty = '';
+          if (currentUserType === 'user') {
+            otherParty = booking.providers?.name || 'Provider';
+          } else {
+            otherParty = booking.users?.name || 'User';
+          }
+          
+                     console.log('🔔 [CHAT_MODAL] Setting other party name to:', otherParty);
+           setFetchedOtherPartyName(otherParty);
+        }
+      } catch (error) {
+        console.error('❌ [CHAT_MODAL] Error fetching booking details:', error);
+      }
+    };
+
+    fetchBookingDetails();
+  }, [isOpen, bookingId, currentUserType]);
+
   // Create or get chat room
   useEffect(() => {
     if (!isOpen) return;
+
+    console.log('🔔 [CHAT_MODAL] Initializing chat for bookingId:', bookingId);
+    console.log('🔔 [CHAT_MODAL] Current user:', { currentUserId, currentUserType });
 
     const initializeChat = async () => {
       try {
@@ -92,9 +141,11 @@ const ChatModal = ({
           .single();
 
         if (existingRoom) {
+          console.log('🔔 [CHAT_MODAL] Found existing chat room:', existingRoom);
           setChatRoom(existingRoom);
           await fetchMessages(existingRoom.id);
         } else {
+          console.log('🔔 [CHAT_MODAL] Creating new chat room for booking:', bookingId);
           // Create new chat room
           const { data: newRoom, error } = await supabase
             .from('chat_rooms')
@@ -108,11 +159,14 @@ const ChatModal = ({
             .single();
 
           if (!error && newRoom) {
+            console.log('🔔 [CHAT_MODAL] Created new chat room:', newRoom);
             setChatRoom(newRoom);
+          } else {
+            console.error('❌ [CHAT_MODAL] Error creating chat room:', error);
           }
         }
       } catch (error) {
-        console.error('Error initializing chat:', error);
+        console.error('❌ [CHAT_MODAL] Error initializing chat:', error);
       }
     };
 
@@ -136,8 +190,11 @@ const ChatModal = ({
           msg => !msg.is_read && msg.sender_id !== currentUserId
         );
         
+        console.log('🔔 [CHAT_MODAL] Found unread messages:', unreadMessages.length);
+        
         if (unreadMessages.length > 0) {
           const messageIds = unreadMessages.map(msg => msg.id);
+          console.log('🔔 [CHAT_MODAL] Marking unread messages as read:', messageIds);
           markMessagesAsRead(messageIds);
         }
       }
@@ -175,13 +232,13 @@ const ChatModal = ({
           if (newMessage.sender_id !== currentUserId) {
             markMessageAsRead(newMessage.id);
             
-            // Show notification for new message
-            if (document.hidden) {
-              toast({
-                title: `New message from ${otherPartyName}`,
-                description: newMessage.content.substring(0, 50) + (newMessage.content.length > 50 ? '...' : ''),
-              });
-            }
+                         // Show notification for new message
+             if (document.hidden) {
+               toast({
+                 title: `New message from ${fetchedOtherPartyName || otherPartyName || 'Contact'}`,
+                 description: newMessage.content.substring(0, 50) + (newMessage.content.length > 50 ? '...' : ''),
+               });
+             }
           }
         }
       )
@@ -190,7 +247,7 @@ const ChatModal = ({
     return () => {
       subscription.unsubscribe();
     };
-  }, [chatRoom, currentUserId, isOpen, otherPartyName, toast]);
+     }, [chatRoom, currentUserId, isOpen, fetchedOtherPartyName, otherPartyName, toast]);
 
   // Mark message as read
   const markMessageAsRead = async (messageId: string) => {
@@ -203,12 +260,14 @@ const ChatModal = ({
   // Mark multiple messages as read
   const markMessagesAsRead = async (messageIds: string[]) => {
     try {
+      console.log('🔔 [CHAT_MODAL] Marking messages as read:', messageIds);
       await supabase
         .from('chat_messages')
         .update({ is_read: true })
         .in('id', messageIds);
+      console.log('✅ [CHAT_MODAL] Successfully marked messages as read');
     } catch (error) {
-      console.error('Error marking messages as read:', error);
+      console.error('❌ [CHAT_MODAL] Error marking messages as read:', error);
     }
   };
 
@@ -322,14 +381,14 @@ const ChatModal = ({
           <div className="bg-gradient-to-r from-primary to-primary/80 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                {otherPartyImage ? (
-                  <img src={otherPartyImage} alt={otherPartyName} className="w-8 h-8 rounded-full" />
-                ) : (
-                  <span className="text-lg font-semibold">{otherPartyName.charAt(0)}</span>
-                )}
+                                 {otherPartyImage ? (
+                   <img src={otherPartyImage} alt={fetchedOtherPartyName || otherPartyName} className="w-8 h-8 rounded-full" />
+                 ) : (
+                   <span className="text-lg font-semibold">{(fetchedOtherPartyName || otherPartyName || 'U').charAt(0)}</span>
+                 )}
               </div>
               <div>
-                <h3 className="font-semibold">{otherPartyName}</h3>
+                                 <h3 className="font-semibold">{fetchedOtherPartyName || otherPartyName || 'Loading...'}</h3>
                 <p className="text-xs opacity-90">Online</p>
               </div>
             </div>
@@ -343,7 +402,10 @@ const ChatModal = ({
               <Button size="sm" variant="ghost" onClick={() => setIsMinimized(!isMinimized)} className="text-white hover:bg-white/20">
                 {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
               </Button>
-              <Button size="sm" variant="ghost" onClick={onClose} className="text-white hover:bg-white/20">
+              <Button size="sm" variant="ghost" onClick={() => {
+                console.log('🔔 [CHAT_MODAL] Closing chat modal');
+                onClose();
+              }} className="text-white hover:bg-white/20">
                 <X className="w-4 h-4" />
               </Button>
             </div>

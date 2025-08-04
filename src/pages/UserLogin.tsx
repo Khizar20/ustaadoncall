@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, ArrowRight, Key, User, Mail, Lock, Home, ArrowLeft } from "lucide-react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { Eye, EyeOff, ArrowRight, Key, User, Mail, Lock, Home, ArrowLeft, CheckCircle } from "lucide-react";
 import { useLanguageContext } from "@/contexts/LanguageContext";
 
 // Password hashing function (same as in registration)
@@ -23,6 +23,7 @@ const hashPassword = async (password: string): Promise<string> => {
 
 const UserLogin = () => {
   const { t } = useLanguageContext();
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -38,6 +39,20 @@ const UserLogin = () => {
   const [resendVerificationEmail, setResendVerificationEmail] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Handle email verification success message
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    if (verified === 'true') {
+      toast({
+        title: "Email Verified Successfully!",
+        description: "Your email has been verified. You can now log in with your credentials.",
+        variant: "default"
+      });
+      // Clear the URL parameter
+      navigate('/user-login', { replace: true });
+    }
+  }, [searchParams, toast, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -157,7 +172,17 @@ const UserLogin = () => {
           }
         }
         
-        throw new Error(error.message);
+        // Handle specific error messages for better user experience
+        let errorMessage = error.message;
+        if (error.message.includes("Invalid login credentials")) {
+          errorMessage = "Invalid email or password. Please check your credentials and try again.";
+        } else if (error.message.includes("User not found")) {
+          errorMessage = "No account found with this email. Please register first or check your email address.";
+        } else if (error.message.includes("Email not confirmed")) {
+          errorMessage = "Please verify your email address before logging in. Check your email for the verification link.";
+        }
+        
+        throw new Error(errorMessage);
       }
 
       if (data.user) {
@@ -207,7 +232,7 @@ const UserLogin = () => {
         // Store user info and token
         const userInfo = {
           id: data.user.id,
-          email: data.user.email,
+          email: userData.email,
           name: userData.name,
           phone: userData.phone,
           address: userData.address,
@@ -215,56 +240,32 @@ const UserLogin = () => {
           providerId: providerData?.id || null
         };
 
+        // Generate token data with timestamp
         const tokenData = {
-          user_id: data.user.id,
-          email: data.user.email,
-          isProvider: !!providerData,
-          providerId: providerData?.id || null,
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes
+          token: data.session?.access_token || '',
+          timestamp: Date.now()
         };
 
+        // Store user info and token data in localStorage
         localStorage.setItem('user_info', JSON.stringify(userInfo));
-        localStorage.setItem('user_token', data.session.access_token);
+        localStorage.setItem('user_token', tokenData.token);
         localStorage.setItem('user_token_data', JSON.stringify(tokenData));
 
-        console.log("✅ Login successful, user info stored");
+        // Dispatch custom event to notify Navigation component
+        window.dispatchEvent(new CustomEvent('auth-state-changed'));
 
-        // Show success message based on user type
-        if (providerData) {
-          toast({
-            title: "Welcome Back!",
-            description: "You can access both user and provider features.",
-          });
-        } else {
-          toast({
-            title: "Login Successful",
-            description: "Welcome to UstaadOnCall!",
-          });
-        }
+        toast({
+          title: "Login Successful!",
+          description: "Welcome back!",
+        });
 
-        // Navigate to dashboard
         navigate('/user-dashboard');
       }
     } catch (error: any) {
-      console.error("❌ Login failed:", error);
-      console.error("Error details:", {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      
-      // Provide more specific error messages
-      let errorMessage = error.message;
-      if (error.message.includes("Email not confirmed")) {
-        errorMessage = "Please check your email and click the verification link before logging in.";
-      } else if (error.message.includes("Invalid login credentials")) {
-        errorMessage = "Invalid email or password. Please check your credentials.";
-      }
-      
+      console.error("❌ Login error:", error);
       toast({
         title: "Login Failed",
-        description: errorMessage,
+        description: error.message || "Invalid credentials. Please try again.",
         variant: "destructive"
       });
     } finally {

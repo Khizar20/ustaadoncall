@@ -112,30 +112,29 @@ const SERVICE_CATEGORIES = [
 
 const BecomeProvider = () => {
   const { t } = useLanguageContext();
-  const [step, setStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedServices, setSelectedServices] = useState<any[]>([]);
-  const [jobsPricing, setJobsPricing] = useState<Record<string, Record<string, string>>>({});
-  const [priceErrors, setPriceErrors] = useState<Record<string, Record<string, string>>>({});
-  const [locationCoordinates, setLocationCoordinates] = useState<{ lat: number; lng: number } | null>(null);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
-    cnic: "",
     experience: "",
     location: "",
-    about: "",
-    cnicFront: null as File | null,
-    cnicBack: null as File | null,
-    profileImage: null as File | null,
+    about: ""
   });
+  const [step, setStep] = useState(1);
+  const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  const [jobsPricing, setJobsPricing] = useState<Record<string, Record<string, string>>>({});
+  const [priceErrors, setPriceErrors] = useState<Record<string, Record<string, string>>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationCoordinates, setLocationCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [finalLocationCoordinates, setFinalLocationCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [cnicFront, setCnicFront] = useState<File | null>(null);
+  const [cnicBack, setCnicBack] = useState<File | null>(null);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -145,10 +144,17 @@ const BecomeProvider = () => {
         setIsLoading(false);
       } else {
         setIsLoading(false);
+        // Redirect to login if not authenticated
+        toast({
+          title: t("Authentication Required"),
+          description: t("Please log in to submit your provider application."),
+          variant: "destructive",
+        });
+        navigate('/user-login');
       }
     };
     checkAuth();
-  }, []);
+  }, [navigate, toast, t]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -158,6 +164,7 @@ const BecomeProvider = () => {
   // Handle location selection from Google Maps autocomplete
   const handleLocationSelect = (location: { lat: number; lng: number; address: string }) => {
     setLocationCoordinates({ lat: location.lat, lng: location.lng });
+    setFinalLocationCoordinates({ lat: location.lat, lng: location.lng });
     setFormData(prev => ({ ...prev, location: location.address }));
   };
 
@@ -255,19 +262,19 @@ const BecomeProvider = () => {
 
   const handleCnicFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({ ...prev, cnicFront: e.target.files[0] }));
+      setCnicFront(e.target.files[0]);
     }
   };
 
   const handleCnicBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({ ...prev, cnicBack: e.target.files[0] }));
+      setCnicBack(e.target.files[0]);
     }
   };
 
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({ ...prev, profileImage: e.target.files[0] }));
+      setProfileImage(e.target.files[0]);
     }
   };
 
@@ -306,19 +313,23 @@ const BecomeProvider = () => {
         return;
       }
 
+
+
       // Geocode the location if not already done by autocomplete
-      let finalLocationCoordinates = locationCoordinates;
+      let coordinates = locationCoordinates;
       if (formData.location && !locationCoordinates) {
         try {
           const coords = await geocodeAddress(formData.location);
           if (coords) {
-            finalLocationCoordinates = { lat: coords.latitude, lng: coords.longitude };
+            coordinates = { lat: coords.latitude, lng: coords.longitude };
             console.log("Geocoded location:", coords);
           }
         } catch (error) {
           console.error("Geocoding error:", error);
         }
       }
+      
+      setFinalLocationCoordinates(coordinates);
 
       setStep(2);
       return;
@@ -379,7 +390,7 @@ const BecomeProvider = () => {
     }
 
     if (step === 3) {
-      if (!formData.cnicFront || !formData.cnicBack || !formData.profileImage) {
+      if (!cnicFront || !cnicBack || !profileImage) {
         toast({
           title: t("Missing Documents"),
           description: t("Please upload all required documents."),
@@ -391,78 +402,147 @@ const BecomeProvider = () => {
       setIsSubmitting(true);
 
       try {
+        console.log("=== PROVIDER APPLICATION SUBMISSION START ===");
+        
         // Upload images
-        const cnicFrontUrl = await uploadImage(formData.cnicFront, `cnic-front/${Date.now()}`);
-        const cnicBackUrl = await uploadImage(formData.cnicBack, `cnic-back/${Date.now()}`);
-        const profileImageUrl = await uploadImage(formData.profileImage, `profile-images/${Date.now()}`);
+        console.log("🔄 Uploading images...");
+        const cnicFrontUrl = await uploadImage(cnicFront, `cnic-front/${Date.now()}`);
+        console.log("✅ CNIC Front URL:", cnicFrontUrl);
+        
+        const cnicBackUrl = await uploadImage(cnicBack, `cnic-back/${Date.now()}`);
+        console.log("✅ CNIC Back URL:", cnicBackUrl);
+        
+        const profileImageUrl = await uploadImage(profileImage, `profile-images/${Date.now()}`);
+        console.log("✅ Profile Image URL:", profileImageUrl);
 
         // Get current user
+        console.log("🔄 Getting current user...");
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           throw new Error("User not authenticated");
         }
+        console.log("✅ User authenticated:", user.id);
 
-        // Create provider profile
-        const { data: provider, error: providerError } = await supabase
-          .from('providers')
-          .insert({
-            user_id: user.id,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            cnic: formData.cnic,
-            experience: formData.experience,
-            location: formData.location,
-            latitude: finalLocationCoordinates?.lat || null,
-            longitude: finalLocationCoordinates?.lng || null,
-            about: formData.about,
-            cnic_front_url: cnicFrontUrl,
-            cnic_back_url: cnicBackUrl,
-            profile_image_url: profileImageUrl,
-            is_verified: false,
-            status: 'pending'
-          })
+        // Prepare service category array (PostgreSQL array format)
+        const serviceCategoryArray = selectedServices.map(service => service.value);
+        
+        // Prepare pending request data
+        const pendingRequestData = {
+          user_id: user.id,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          experience: formData.experience,
+          location: formData.location,
+          latitude: finalLocationCoordinates?.lat || null,
+          longitude: finalLocationCoordinates?.lng || null,
+          bio: formData.about,
+          service_category: serviceCategoryArray,
+          cnic_front_url: cnicFrontUrl,
+          cnic_back_url: cnicBackUrl,
+          profile_image_url: profileImageUrl,
+          status: 'pending'
+        };
+        
+        console.log("📋 Pending request data to insert:", pendingRequestData);
+        console.log("📍 Location coordinates:", finalLocationCoordinates);
+
+        // Create pending request
+        console.log("🔄 Creating pending request...");
+        const { data: pendingRequest, error: pendingRequestError } = await supabase
+          .from('pending_requests')
+          .insert(pendingRequestData)
           .select()
           .single();
 
-        if (providerError) {
-          throw providerError;
+        console.log("Pending request insert response:", { pendingRequest, pendingRequestError });
+
+        if (pendingRequestError) {
+          console.error("❌ Pending request insert error:", pendingRequestError);
+          console.error("Error details:", {
+            message: pendingRequestError.message,
+            details: pendingRequestError.details,
+            hint: pendingRequestError.hint,
+            code: pendingRequestError.code
+          });
+          throw pendingRequestError;
         }
 
-        // Create service offerings
+        console.log("✅ Pending request created successfully:", pendingRequest);
+
+        // Update pending request with service offerings and pricing
+        console.log("🔄 Updating pending request with service offerings...");
+        const jobsPricingData = {};
+        
         for (const service of selectedServices) {
           const cat = SERVICE_CATEGORIES.find(c => c.key === service.value);
-          if (!cat) continue;
-
-          const { error: serviceError } = await supabase
-            .from('service_offerings')
-            .insert({
-              provider_id: provider.id,
-              service_category: cat.key,
-              jobs_pricing: jobsPricing[cat.key] || {}
-            });
-
-          if (serviceError) {
-            console.error('Error creating service offering:', serviceError);
+          if (!cat) {
+            console.warn("⚠️ Service category not found:", service.value);
+            continue;
           }
+          
+          jobsPricingData[cat.key] = jobsPricing[cat.key] || {};
+          console.log("📋 Service pricing for category:", cat.key, jobsPricingData[cat.key]);
         }
+        
+        console.log("📋 All jobs pricing data:", jobsPricingData);
+
+        const { error: updateError } = await supabase
+          .from('pending_requests')
+          .update({ 
+            jobs_pricing: jobsPricingData 
+          })
+          .eq('id', pendingRequest.id);
+
+        if (updateError) {
+          console.error('❌ Error updating pending request with pricing:', updateError);
+        } else {
+          console.log("✅ Pending request updated with service offerings successfully");
+        }
+
+        console.log("=== PENDING REQUEST SUBMISSION SUCCESS ===");
 
         toast({
           title: t("Application Submitted!"),
-          description: t("Your provider application has been submitted successfully. We'll review it and get back to you soon."),
+          description: t("Your provider application has been submitted successfully and is pending review. We'll review it and get back to you soon."),
         });
 
-        // Navigate to provider dashboard after a delay
+        // Navigate to user dashboard after a delay (since they're not a provider yet)
         setTimeout(() => {
-          navigate('/provider-dashboard');
+          navigate('/user-dashboard');
         }, 2000);
 
       } catch (error) {
-        console.error('Error submitting application:', error);
+        console.error('❌ Error submitting application:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+        
+        // Provide more specific error messages
+        let errorMessage = t("Failed to submit application. Please try again.");
+        
+        if (error instanceof Error) {
+          if (error.message === "User not authenticated") {
+            errorMessage = t("Please log in to submit your application.");
+            // Redirect to login
+            setTimeout(() => {
+              navigate('/user-login');
+            }, 2000);
+          } else if (error.message.includes("duplicate key")) {
+            errorMessage = t("You have already submitted an application. Please contact support if you need to make changes.");
+          } else if (error.message.includes("network") || error.message.includes("fetch")) {
+            errorMessage = t("Network error. Please check your internet connection and try again.");
+          } else if (error.message.includes("400")) {
+            errorMessage = t("Invalid data provided. Please check your information and try again.");
+          }
+        }
+        
         toast({
           title: t("Error"),
-          description: t("Failed to submit application. Please try again."),
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -614,7 +694,19 @@ const BecomeProvider = () => {
           
           <div className="max-w-4xl mx-auto">
             <Card className="p-8 border-border bg-background">
-              <form onSubmit={handleSubmit} className="space-y-6">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">{t("Checking authentication...")}</p>
+                  </div>
+                </div>
+              ) : !isAuthenticated ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">{t("Please log in to access the application form.")}</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
                 {step === 1 && (
                   <>
                     <h3 className="text-xl font-bold mb-4">{t("Personal Information")}</h3>
@@ -702,6 +794,9 @@ const BecomeProvider = () => {
                           <option value="10+">{t("10+ years")}</option>
                         </select>
                       </div>
+
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="location" className="block text-sm font-medium text-foreground mb-2">
                           {t("Service Area")} *
@@ -855,6 +950,7 @@ const BecomeProvider = () => {
                   {t("By submitting this application, you agree to our terms of service and privacy policy. We'll review your application within 48 hours.")}
                 </p>
               </form>
+            )}
             </Card>
           </div>
         </div>

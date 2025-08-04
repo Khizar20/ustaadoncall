@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { Eye, EyeOff, User, Lock, Mail, Phone, MapPin, ArrowRight, CheckCircle, Home, ArrowLeft } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { useLanguageContext } from "@/contexts/LanguageContext";
 
 // Simple password hashing function (in production, use bcrypt or similar)
 const hashPassword = async (password: string): Promise<string> => {
@@ -32,46 +33,9 @@ const UserRegister = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerificationSent, setIsVerificationSent] = useState(false);
-  const [showBypassOption, setShowBypassOption] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Function to manually confirm user (for testing)
-  const handleManualConfirmation = async (userId: string) => {
-    try {
-      console.log("🔄 Manually confirming user:", userId);
-      
-      // Since we don't have admin privileges, we'll use a different approach
-      // We'll update the user's email_confirmed_at directly in the database
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          email_confirmed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      toast({
-        title: "User Confirmed",
-        description: "You can now log in with your credentials.",
-      });
-
-      // Navigate to login
-      navigate('/user-login');
-    } catch (error: any) {
-      console.error("❌ Manual confirmation failed:", error);
-      toast({
-        title: "Confirmation Failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
+  const { t } = useLanguageContext();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -168,7 +132,6 @@ const UserRegister = () => {
 
       if (authData.user) {
         console.log("✅ User created/verified in Supabase Auth:", authData.user.id);
-        setCurrentUserId(authData.user.id);
 
         console.log("🔄 Creating user profile in users table...");
         
@@ -337,87 +300,30 @@ const UserRegister = () => {
                 >
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </motion.div>
-                <CardTitle className="text-2xl font-bold text-green-600">Registration Successful!</CardTitle>
+                <CardTitle className="text-2xl font-bold text-green-600">{t("Registration Successful!")}</CardTitle>
                 <CardDescription>
-                  Your account has been created successfully. Please check your email for verification.
+                  {t("Your account has been created successfully. Please check your email for verification.")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-700">
-                    <strong>Next Steps:</strong>
+                    <strong>{t("Next Steps:")}</strong>
                   </p>
                   <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                    <li>• Check your email for verification link</li>
-                    <li>• Click the verification link to activate your account</li>
-                    <li>• Once verified, you can log in to your account</li>
+                    <li>• {t("Check your email for verification link")}</li>
+                    <li>• {t("Click the verification link to activate your account")}</li>
+                    <li>• {t("Once verified, you can log in to your account")}</li>
                   </ul>
                 </div>
-                
-                <Button
-                  onClick={() => {
-                    setIsVerificationSent(false);
-                    setFormData({
-                      name: "",
-                      email: "",
-                      phone: "",
-                      password: "",
-                      confirmPassword: "",
-                      address: ""
-                    });
-                  }}
-                  className="w-full"
-                >
-                  Register Another Account
-                </Button>
                 
                 <Button
                   variant="outline"
                   onClick={() => navigate('/user-login')}
                   className="w-full"
                 >
-                  Go to Login
+                  {t("Go to Login")}
                 </Button>
-                
-                {/* Development bypass option - only show in development */}
-                {process.env.NODE_ENV === 'development' && (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowBypassOption(!showBypassOption)}
-                      className="w-full text-xs"
-                    >
-                      {showBypassOption ? "Hide" : "Show"} Development Options
-                    </Button>
-                    
-                    {showBypassOption && (
-                      <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <p className="text-xs text-yellow-800 mb-2">
-                          <strong>Development Mode:</strong> If email verification is not working, you can manually confirm the user.
-                        </p>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            // Use the current user ID from registration
-                            if (currentUserId) {
-                              handleManualConfirmation(currentUserId);
-                            } else {
-                              toast({
-                                title: "Error",
-                                description: "User ID not found. Please try registering again.",
-                                variant: "destructive"
-                              });
-                            }
-                          }}
-                          className="w-full text-xs"
-                        >
-                          Manually Confirm User (Dev Only)
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -642,7 +548,7 @@ const UserRegister = () => {
 
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-700">
-                <strong>Security Notice:</strong> Your account will be verified via email before you can access our services.
+                <strong>{t("Security Notice:")}</strong> {t("Your account will be verified via email before you can access our services.")}
               </p>
             </div>
           </CardContent>

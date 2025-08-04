@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { getServiceCategoryNames, getServiceCategoryByName } from "@/lib/serviceCategories";
+import { Navigation } from "@/components/ui/navigation";
 import ChatModal from "@/components/ChatModal";
 import MessageNotification from "@/components/MessageNotification";
 import NotificationBadge from "@/components/NotificationBadge";
@@ -91,32 +92,26 @@ const ProviderDashboard = () => {
   const [showChatForBooking, setShowChatForBooking] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Token management
-  const TOKEN_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     checkAuthAndLoadData();
-    // Set up token expiry check
-    const tokenCheckInterval = setInterval(checkTokenExpiry, 60000); // Check every minute
-    return () => clearInterval(tokenCheckInterval);
   }, []);
 
-  const checkTokenExpiry = () => {
-    const tokenData = localStorage.getItem('provider_token_data');
-    if (tokenData) {
-      const { timestamp } = JSON.parse(tokenData);
-      const now = Date.now();
-      if (now - timestamp > TOKEN_EXPIRY) {
-        handleLogout();
-        toast({
-          title: "Session Expired",
-          description: "Your session has expired. Please log in again.",
-          variant: "destructive"
-        });
-      }
+  // Handle booking parameter from URL to open chat
+  useEffect(() => {
+    const bookingId = searchParams.get('booking');
+    console.log('🔔 [PROVIDER_DASHBOARD] URL search params:', searchParams.toString());
+    console.log('🔔 [PROVIDER_DASHBOARD] Booking ID from URL:', bookingId);
+    
+    if (bookingId) {
+      console.log('🔔 [PROVIDER_DASHBOARD] Setting showChatForBooking to:', bookingId);
+      setShowChatForBooking(bookingId);
+      // Clear the URL parameter after setting the chat
+      console.log('🔔 [PROVIDER_DASHBOARD] Clearing URL parameter');
+      navigate('/provider-dashboard', { replace: true });
     }
-  };
+  }, [searchParams, navigate]);
 
   const checkAuthAndLoadData = async () => {
     try {
@@ -130,13 +125,7 @@ const ProviderDashboard = () => {
         return;
       }
 
-      // Check token expiry
-      const { timestamp } = JSON.parse(tokenData);
-      const now = Date.now();
-      if (now - timestamp > TOKEN_EXPIRY) {
-        handleLogout();
-        return;
-      }
+
 
       // Verify session with Supabase
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -152,16 +141,27 @@ const ProviderDashboard = () => {
       
       // Initialize services from jobs_pricing
       if (providerData.jobs_pricing) {
+        console.log('📥 Loading services from providerData.jobs_pricing:', providerData.jobs_pricing);
         const servicesData = Object.entries(providerData.jobs_pricing).map(([category, jobs]) => ({
           category,
           experience: "1-2", // Default experience
           jobs: Array.isArray(jobs) ? jobs : []
         }));
+        console.log('📥 Transformed servicesData:', servicesData);
         setServices(servicesData);
+      } else {
+        console.log('📥 No jobs_pricing data found in providerData');
       }
 
       // Fetch provider's bookings
       await fetchBookings(providerData.id);
+
+      // Handle auto-opening chat if booking ID is in URL
+      const bookingId = searchParams.get('booking');
+      if (bookingId) {
+        setShowChatForBooking(bookingId);
+      }
+
     } catch (error) {
       console.error('Auth check failed:', error);
       navigate('/provider-login');
@@ -221,6 +221,10 @@ const ProviderDashboard = () => {
       localStorage.removeItem('provider_token');
       localStorage.removeItem('provider_token_data');
       localStorage.removeItem('provider_info');
+      
+      // Dispatch custom event to notify Navigation component
+      window.dispatchEvent(new CustomEvent('auth-state-changed'));
+      
       toast({
         title: "Logged Out",
         description: "You have been successfully logged out.",
@@ -293,6 +297,11 @@ const ProviderDashboard = () => {
         }
       });
 
+      console.log('💾 Saving services to database:');
+      console.log('💾 jobsPricing:', jobsPricing);
+      console.log('💾 serviceCategories:', serviceCategories);
+      console.log('💾 experiences:', experiences);
+
       // Update providers table with service_category, experience, and jobs_pricing
       const { error } = await supabase
         .from('providers')
@@ -304,6 +313,8 @@ const ProviderDashboard = () => {
         .eq('id', providerInfo?.id);
 
       if (error) throw error;
+
+      console.log('✅ Services saved successfully to database');
 
       // Update local state
       if (providerInfo) {
@@ -356,6 +367,12 @@ const ProviderDashboard = () => {
       case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleOpenChat = (bookingId: string) => {
+    console.log('🔔 [PROVIDER_DASHBOARD] handleOpenChat called with bookingId:', bookingId);
+    // Navigate to chat view for this booking
+    navigate(`/provider-dashboard?booking=${bookingId}`);
   };
 
   const updateBookingStatus = async (bookingId: string, newStatus: string) => {
@@ -412,36 +429,9 @@ const ProviderDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold">Provider Dashboard</h1>
-                <p className="text-sm text-muted-foreground">
-                  Welcome back, {providerInfo.name}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <NotificationDropdown 
-                currentUserId={providerInfo?.id || ''} 
-                currentUserType="provider"
-              />
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-6">
+      <Navigation />
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-6 pt-24">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div className="lg:col-span-1">
@@ -487,6 +477,7 @@ const ProviderDashboard = () => {
                     className="ml-auto"
                   />
                 </Button>
+
                 <Button
                   variant={activeTab === 'earnings' ? 'default' : 'ghost'}
                   className="w-full justify-start"
@@ -529,7 +520,7 @@ const ProviderDashboard = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <Card>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
@@ -546,9 +537,41 @@ const ProviderDashboard = () => {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
+                          <p className="text-sm font-medium text-muted-foreground">Completed Jobs</p>
+                          <p className="text-2xl font-bold">{bookings.filter(booking => booking.status === 'completed').length}</p>
+                        </div>
+                        <CheckCircle className="h-8 w-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Pending Earnings</p>
+                          <p className="text-2xl font-bold">
+                            Rs. {bookings
+                              .filter(booking => ['pending', 'confirmed'].includes(booking.status))
+                              .reduce((total, booking) => total + booking.total_amount, 0)
+                              .toLocaleString()}
+                          </p>
+                        </div>
+                        <Clock className="h-8 w-8 text-yellow-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
                           <p className="text-sm font-medium text-muted-foreground">Total Earnings</p>
                           <p className="text-2xl font-bold">
-                            Rs. {bookings.reduce((total, booking) => total + booking.total_amount, 0).toLocaleString()}
+                            Rs. {bookings
+                              .filter(booking => booking.status === 'completed')
+                              .reduce((total, booking) => total + booking.total_amount, 0)
+                              .toLocaleString()}
                           </p>
                         </div>
                         <DollarSign className="h-8 w-8 text-green-600" />
@@ -712,15 +735,6 @@ const ProviderDashboard = () => {
                             </div>
                           </div>
                           
-                                                  {/* Chat Modal for this booking */}
-                        <ChatModal
-                          isOpen={showChatForBooking === booking.id}
-                          onClose={() => setShowChatForBooking(null)}
-                          bookingId={booking.id}
-                          currentUserId={providerInfo?.id || ''}
-                          currentUserType="provider"
-                          otherPartyName={booking.user_name}
-                        />
                           </div>
                         ))}
                       
@@ -1201,9 +1215,9 @@ const ProviderDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium">Session Timeout</h4>
-                        <p className="text-sm text-muted-foreground">Your session expires after 30 minutes of inactivity</p>
+                        <p className="text-sm text-muted-foreground">Your session will remain active until you log out</p>
                       </div>
-                      <Badge variant="outline">30 minutes</Badge>
+                      <Badge variant="outline">No expiry</Badge>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -1228,6 +1242,17 @@ const ProviderDashboard = () => {
         <MessageNotification 
           currentUserId={providerInfo.id} 
           currentUserType="provider" 
+        />
+      )}
+
+      {/* Chat Modal - rendered outside tab content so it's always available */}
+      {showChatForBooking && providerInfo && (
+        <ChatModal
+          isOpen={!!showChatForBooking}
+          onClose={() => setShowChatForBooking(null)}
+          bookingId={showChatForBooking}
+          currentUserId={providerInfo.id}
+          currentUserType="provider"
         />
       )}
     </div>

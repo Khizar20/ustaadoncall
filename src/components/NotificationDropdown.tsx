@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface Notification {
   id: string;
   chat_room_id: string;
+  booking_id: string;
   sender_name: string;
   content: string;
   created_at: string;
@@ -17,9 +18,10 @@ interface Notification {
 interface NotificationDropdownProps {
   currentUserId: string;
   currentUserType: 'user' | 'provider';
+  onOpenChat?: (bookingId: string) => void;
 }
 
-const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDropdownProps) => {
+const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: NotificationDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -30,72 +32,104 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
 
     const fetchNotifications = async () => {
       try {
-        // Get chat rooms for this user
-        const { data: chatRooms } = await supabase
-          .from('chat_rooms')
-          .select('id')
-          .eq(currentUserType === 'user' ? 'user_id' : 'provider_id', currentUserId);
+        console.log('🔔 [NOTIFICATIONS] Fetching notifications for:', { currentUserId, currentUserType });
+        
+        // Get all bookings for this user/provider
+        let bookingsQuery;
+        if (currentUserType === 'user') {
+          bookingsQuery = supabase
+            .from('bookings')
+            .select('id')
+            .eq('user_id', currentUserId);
+        } else {
+          bookingsQuery = supabase
+            .from('bookings')
+            .select('id')
+            .eq('provider_id', currentUserId);
+        }
 
-        if (chatRooms && chatRooms.length > 0) {
-          const roomIds = chatRooms.map(room => room.id);
+        const { data: bookings } = await bookingsQuery;
+        console.log('🔔 [NOTIFICATIONS] Found bookings:', bookings);
+
+        if (bookings && bookings.length > 0) {
+          const bookingIds = bookings.map(booking => booking.id);
           
-          // Get recent unread messages
-          const { data: messages } = await supabase
-            .from('chat_messages')
-            .select(`
-              id,
-              content,
-              created_at,
-              is_read,
-              chat_room_id,
-              sender_id,
-              sender_type
-            `)
-            .in('chat_room_id', roomIds)
-            .eq('is_read', false)
-            .neq('sender_id', currentUserId)
-            .order('created_at', { ascending: false })
-            .limit(5);
+          // Get chat rooms for these bookings
+          const { data: chatRooms } = await supabase
+            .from('chat_rooms')
+            .select('id, booking_id')
+            .in('booking_id', bookingIds);
 
-          if (messages) {
-            // Get sender names
-            const notificationsWithNames = await Promise.all(
-              messages.map(async (message) => {
-                let senderName = 'Unknown';
-                
-                if (message.sender_type === 'provider') {
-                  const { data: provider } = await supabase
-                    .from('providers')
-                    .select('name')
-                    .eq('id', message.sender_id)
-                    .single();
-                  senderName = provider?.name || 'Provider';
-                } else {
-                  const { data: user } = await supabase
-                    .from('users')
-                    .select('name')
-                    .eq('id', message.sender_id)
-                    .single();
-                  senderName = user?.name || 'User';
-                }
+          console.log('🔔 [NOTIFICATIONS] Found chat rooms:', chatRooms);
 
-                return {
-                  id: message.id,
-                  chat_room_id: message.chat_room_id,
-                  sender_name: senderName,
-                  content: message.content,
-                  created_at: message.created_at,
-                  is_read: message.is_read
-                };
-              })
-            );
+          if (chatRooms && chatRooms.length > 0) {
+            const roomIds = chatRooms.map(room => room.id);
+          
+            // Get recent unread messages
+            const { data: messages } = await supabase
+              .from('chat_messages')
+              .select(`
+                id,
+                content,
+                created_at,
+                is_read,
+                chat_room_id,
+                sender_id,
+                sender_type
+              `)
+              .in('chat_room_id', roomIds)
+              .eq('is_read', false)
+              .neq('sender_id', currentUserId)
+              .order('created_at', { ascending: false })
+              .limit(5);
 
-            setNotifications(notificationsWithNames);
-            setUnreadCount(notificationsWithNames.length);
+            console.log('🔔 [NOTIFICATIONS] Found unread messages:', messages);
+
+            if (messages) {
+              // Get sender names
+              const notificationsWithNames = await Promise.all(
+                messages.map(async (message) => {
+                  let senderName = 'Unknown';
+                  
+                  if (message.sender_type === 'provider') {
+                    const { data: provider } = await supabase
+                      .from('providers')
+                      .select('name')
+                      .eq('id', message.sender_id)
+                      .single();
+                    senderName = provider?.name || 'Provider';
+                  } else {
+                    const { data: user } = await supabase
+                      .from('users')
+                      .select('name')
+                      .eq('id', message.sender_id)
+                      .single();
+                    senderName = user?.name || 'User';
+                  }
+
+                  // Find the chat room for this message to get booking_id
+                  const chatRoom = chatRooms.find(room => room.id === message.chat_room_id);
+                  
+                  return {
+                    id: message.id,
+                    chat_room_id: message.chat_room_id,
+                    booking_id: chatRoom?.booking_id || '',
+                    sender_name: senderName,
+                    content: message.content,
+                    created_at: message.created_at,
+                    is_read: message.is_read
+                  };
+                })
+              );
+
+              console.log('🔔 [NOTIFICATIONS] Processed notifications:', notificationsWithNames);
+              setNotifications(notificationsWithNames);
+              setUnreadCount(notificationsWithNames.length);
+            }
           }
         }
       } catch (error) {
-        console.error('Error fetching notifications:', error);
+        console.error('❌ [NOTIFICATIONS] Error fetching notifications:', error);
       }
     };
 
@@ -105,6 +139,8 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
   // Real-time subscription for new messages
   useEffect(() => {
     if (!currentUserId) return;
+
+    console.log('🔔 [NOTIFICATIONS] Setting up real-time subscription for:', currentUserId);
 
     const subscription = supabase
       .channel(`notifications_dropdown_${currentUserId}`)
@@ -116,21 +152,37 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
           filter: `sender_id=neq.${currentUserId}`
         },
         async (payload) => {
+          console.log('🔔 [NOTIFICATIONS] New message received:', payload);
           const newMessage = payload.new as any;
           
-          // Check if this message is for this user
+          // Check if this message is for this user by checking the booking
           const { data: chatRoom } = await supabase
             .from('chat_rooms')
-            .select('*')
+            .select('booking_id')
             .eq('id', newMessage.chat_room_id)
             .single();
 
           if (chatRoom) {
-            const isForThisUser = currentUserType === 'user' 
-              ? chatRoom.user_id === currentUserId 
-              : chatRoom.provider_id === currentUserId;
+            // Check if this booking belongs to the current user
+            let bookingQuery;
+            if (currentUserType === 'user') {
+              bookingQuery = supabase
+                .from('bookings')
+                .select('id')
+                .eq('id', chatRoom.booking_id)
+                .eq('user_id', currentUserId);
+            } else {
+              bookingQuery = supabase
+                .from('bookings')
+                .select('id')
+                .eq('id', chatRoom.booking_id)
+                .eq('provider_id', currentUserId);
+            }
 
-            if (isForThisUser) {
+            const { data: booking } = await bookingQuery;
+
+            if (booking) {
+              console.log('🔔 [NOTIFICATIONS] New message belongs to current user');
               // Get sender name
               let senderName = 'Unknown';
               if (newMessage.sender_type === 'provider') {
@@ -152,12 +204,14 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
               const newNotification: Notification = {
                 id: newMessage.id,
                 chat_room_id: newMessage.chat_room_id,
+                booking_id: chatRoom.booking_id,
                 sender_name: senderName,
                 content: newMessage.content,
                 created_at: newMessage.created_at,
                 is_read: false
               };
 
+              console.log('🔔 [NOTIFICATIONS] Adding new notification:', newNotification);
               setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
               setUnreadCount(prev => prev + 1);
             }
@@ -167,6 +221,7 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
       .subscribe();
 
     return () => {
+      console.log('🔔 [NOTIFICATIONS] Cleaning up subscription');
       subscription.unsubscribe();
     };
   }, [currentUserId, currentUserType]);
@@ -184,15 +239,17 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
 
   const markAsRead = async (notificationId: string) => {
     try {
+      console.log('🔔 [NOTIFICATIONS] Marking notification as read:', notificationId);
       await supabase
         .from('chat_messages')
         .update({ is_read: true })
         .eq('id', notificationId);
       
+      console.log('✅ [NOTIFICATIONS] Successfully marked notification as read');
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('❌ [NOTIFICATIONS] Error marking notification as read:', error);
     }
   };
 
@@ -201,6 +258,7 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
     if (notifications.length === 0) return;
     
     try {
+      console.log('🔔 [NOTIFICATIONS] Marking all notifications as read');
       const messageIds = notifications.map(n => n.id);
       await supabase
         .from('chat_messages')
@@ -210,7 +268,24 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
       setNotifications([]);
       setUnreadCount(0);
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error('❌ [NOTIFICATIONS] Error marking all notifications as read:', error);
+    }
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    console.log('🔔 [NOTIFICATIONS] Notification clicked:', notification);
+    
+    if (onOpenChat && notification.booking_id) {
+      console.log('🔔 [NOTIFICATIONS] Opening chat for booking:', notification.booking_id);
+      
+      // Mark this specific message as read
+      markAsRead(notification.id);
+      
+      // Open the chat
+      onOpenChat(notification.booking_id);
+      setIsOpen(false);
+    } else {
+      console.error('❌ [NOTIFICATIONS] onOpenChat not provided or booking_id missing');
     }
   };
 
@@ -220,10 +295,8 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
         variant="ghost"
         size="sm"
         onClick={() => {
+          console.log('🔔 [NOTIFICATIONS] Toggle dropdown, current state:', isOpen);
           setIsOpen(!isOpen);
-          if (!isOpen && notifications.length > 0) {
-            markAllAsRead();
-          }
         }}
         className="relative"
       >
@@ -246,13 +319,25 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
             <div className="p-4 border-b">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Notifications</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {notifications.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={markAllAsRead}
+                      className="text-xs"
+                    >
+                      Mark All Read
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -268,8 +353,9 @@ const NotificationDropdown = ({ currentUserId, currentUserType }: NotificationDr
                     key={notification.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="p-4 border-b hover:bg-gray-50 cursor-pointer"
-                    onClick={() => markAsRead(notification.id)}
+                    className="p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleNotificationClick(notification)}
+                    title="Click to open chat"
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">

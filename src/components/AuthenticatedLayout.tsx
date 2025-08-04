@@ -42,9 +42,6 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Token management
-  const TOKEN_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
-
   useEffect(() => {
     const checkAuth = () => {
       const storedUserInfo = localStorage.getItem('user_info');
@@ -59,14 +56,6 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
           navigate('/user-login');
         }
         setIsLoading(false);
-        return;
-      }
-
-      // Check token expiry
-      const { timestamp } = JSON.parse(tokenData);
-      const now = Date.now();
-      if (now - timestamp > TOKEN_EXPIRY) {
-        handleLogout();
         return;
       }
 

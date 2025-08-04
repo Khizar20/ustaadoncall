@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, LogOut, FileText, ChevronDown, Sparkles, Home, Settings, Shield, AlertCircle } from "lucide-react";
+import { Menu, X, User, LogOut, FileText, ChevronDown, Sparkles, Home, Settings, Shield, AlertCircle, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabaseClient";
 import { useLanguageContext } from "@/contexts/LanguageContext";
 import { LanguageToggle } from "@/components/ui/language-toggle";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 const navigationItems = [
   { name: "Home", href: "/", icon: Home },
@@ -27,50 +28,108 @@ interface UserInfo {
   providerId?: string;
 }
 
+interface ProviderInfo {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  service_category: string;
+  bio: string;
+  experience: string;
+  rating: number;
+  reviews_count: number;
+  is_verified: boolean;
+  profile_image: string;
+  jobs_pricing: any;
+  created_at: string;
+}
+
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [isProvider, setIsProvider] = useState(false);
+  const [providerInfo, setProviderInfo] = useState<ProviderInfo | null>(null);
+  const [currentAccountType, setCurrentAccountType] = useState<'user' | 'provider' | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguageContext();
 
-  // Token management
-  const TOKEN_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
-
   useEffect(() => {
     const checkAuth = () => {
+      // Check user authentication
       const storedUserInfo = localStorage.getItem('user_info');
-      const storedToken = localStorage.getItem('user_token');
-      const tokenData = localStorage.getItem('user_token_data');
+      const storedUserToken = localStorage.getItem('user_token');
+      const userTokenData = localStorage.getItem('user_token_data');
 
-      if (!storedUserInfo || !storedToken || !tokenData) {
+      // Check provider authentication
+      const storedProviderInfo = localStorage.getItem('provider_info');
+      const storedProviderToken = localStorage.getItem('provider_token');
+      const providerTokenData = localStorage.getItem('provider_token_data');
+
+      let isUserLoggedIn = false;
+      let isProviderLoggedIn = false;
+
+      // Check user auth
+      if (storedUserInfo && storedUserToken && userTokenData) {
+        try {
+          const userData = JSON.parse(storedUserInfo);
+          setUserInfo(userData);
+          isUserLoggedIn = true;
+        } catch (error) {
+          console.error('Error parsing user token data:', error);
+        }
+      }
+
+      // Check provider auth
+      if (storedProviderInfo && storedProviderToken && providerTokenData) {
+        try {
+          const providerData = JSON.parse(storedProviderInfo);
+          setProviderInfo(providerData);
+          isProviderLoggedIn = true;
+        } catch (error) {
+          console.error('Error parsing provider token data:', error);
+        }
+      }
+
+      // Determine current account type - preserve existing choice when both are logged in
+      if (isUserLoggedIn && isProviderLoggedIn) {
+        // Both logged in - preserve current account type, only set if null
+        if (currentAccountType === null) {
+          // Default to user account type if not set
+          setCurrentAccountType('user');
+        }
+        // If currentAccountType is already set, don't change it
+      } else if (isUserLoggedIn && currentAccountType !== 'user') {
+        setCurrentAccountType('user');
+      } else if (isProviderLoggedIn && currentAccountType !== 'provider') {
+        setCurrentAccountType('provider');
+      } else if (!isUserLoggedIn && !isProviderLoggedIn) {
+        setCurrentAccountType(null);
         setUserInfo(null);
-        setIsProvider(false);
-        return;
-      }
-
-      // Check token expiry
-      const { timestamp } = JSON.parse(tokenData);
-      const now = Date.now();
-      if (now - timestamp > TOKEN_EXPIRY) {
-        handleLogout();
-        return;
-      }
-
-      const userData = JSON.parse(storedUserInfo);
-      setUserInfo(userData);
-      
-      // Check if user is also a provider
-      if (userData.isProvider && userData.providerId) {
-        setIsProvider(true);
+        setProviderInfo(null);
       }
     };
 
     checkAuth();
-  }, [location.pathname]);
+
+    // Listen for authentication state changes
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+
+    // Listen for storage events (when localStorage changes in other tabs)
+    window.addEventListener('storage', handleAuthChange);
+    
+    // Listen for custom auth events
+    window.addEventListener('auth-state-changed', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('storage', handleAuthChange);
+      window.removeEventListener('auth-state-changed', handleAuthChange);
+    };
+  }, []); // No dependencies to prevent re-running on navigation
 
   // Handle scroll effect
   useEffect(() => {
@@ -98,15 +157,65 @@ export function Navigation() {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
+      
+      // Clear all authentication data
       localStorage.removeItem('user_token');
       localStorage.removeItem('user_token_data');
       localStorage.removeItem('user_info');
+      localStorage.removeItem('provider_token');
+      localStorage.removeItem('provider_token_data');
+      localStorage.removeItem('provider_info');
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('auth-state-changed'));
+      
       setUserInfo(null);
-      setIsProvider(false);
+      setProviderInfo(null);
+      setCurrentAccountType(null);
       setShowUserMenu(false);
-      navigate('/user-login');
+      navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const handleSwitchAccount = (accountType: 'user' | 'provider') => {
+    setCurrentAccountType(accountType);
+    setShowUserMenu(false);
+    
+    if (accountType === 'user') {
+      navigate('/user-dashboard');
+    } else {
+      navigate('/provider-dashboard');
+    }
+  };
+
+  const getCurrentUserInfo = () => {
+    if (currentAccountType === 'user' && userInfo) {
+      return { id: userInfo.id, name: userInfo.name, email: userInfo.email, type: 'user' as const };
+    } else if (currentAccountType === 'provider' && providerInfo) {
+      return { id: providerInfo.id, name: providerInfo.name, email: providerInfo.email, type: 'provider' as const };
+    }
+    return null;
+  };
+
+  const isLoggedInAsBoth = () => {
+    return userInfo && providerInfo;
+  };
+
+  const handleOpenChat = (bookingId: string) => {
+    console.log('🔔 [NAVIGATION] handleOpenChat called with bookingId:', bookingId);
+    console.log('🔔 [NAVIGATION] Current account type:', currentAccountType);
+    
+    // Navigate to the appropriate chat page based on current account type
+    if (currentAccountType === 'user') {
+      console.log('🔔 [NAVIGATION] Navigating to user dashboard with booking:', bookingId);
+      navigate(`/user-dashboard?booking=${bookingId}`);
+    } else if (currentAccountType === 'provider') {
+      console.log('🔔 [NAVIGATION] Navigating to provider dashboard with booking:', bookingId);
+      navigate(`/provider-dashboard?booking=${bookingId}`);
+    } else {
+      console.error('❌ [NAVIGATION] Unknown account type:', currentAccountType);
     }
   };
 
@@ -190,7 +299,7 @@ export function Navigation() {
             })}
           </motion.div>
 
-          {/* Desktop User Menu or Login Buttons */}
+          {/* Desktop User Menu and Login Buttons */}
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -198,8 +307,72 @@ export function Navigation() {
             className="hidden lg:flex items-center gap-3"
           >
             <LanguageToggle />
-            {userInfo ? (
-              // User is logged in - show user menu
+            
+            {/* Notification Button - Show when logged in */}
+            {currentAccountType && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.75, duration: 0.3 }}
+              >
+                <NotificationDropdown 
+                  currentUserId={getCurrentUserInfo()?.id || ''} 
+                  currentUserType={currentAccountType}
+                  onOpenChat={handleOpenChat}
+                />
+              </motion.div>
+            )}
+            
+            {/* Conditionally show login buttons based on authentication status */}
+            <div className="flex items-center gap-3">
+              {/* Show User Login only if not logged in as user AND not logged in as both */}
+              {currentAccountType !== 'user' && !isLoggedInAsBoth() && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.8, duration: 0.3 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button variant="outline" size="sm" asChild className="rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
+                    <Link to="/user-login">{t("User Login")}</Link>
+                  </Button>
+                </motion.div>
+              )}
+              
+              {/* Show Provider Login only if not logged in as provider AND not logged in as both */}
+              {currentAccountType !== 'provider' && !isLoggedInAsBoth() && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.85, duration: 0.3 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button variant="outline" size="sm" asChild className="rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
+                    <Link to="/provider-login">{t("Provider Login")}</Link>
+                  </Button>
+                </motion.div>
+              )}
+              
+              {/* Show Become Provider only if not logged in as provider AND not logged in as both */}
+              {currentAccountType !== 'provider' && !isLoggedInAsBoth() && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.9, duration: 0.3 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button size="sm" asChild className="rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg text-white">
+                    <Link to="/become-provider">{t("Become Provider")}</Link>
+                  </Button>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Show user menu if logged in */}
+            {currentAccountType && (
               <div className="relative user-menu">
                 <Button
                   variant="ghost"
@@ -214,10 +387,15 @@ export function Navigation() {
                   </div>
                   <div className="flex flex-col items-start">
                     <span className="text-sm font-semibold text-slate-800">
-                      {userInfo.name}
+                      {getCurrentUserInfo()?.name}
                     </span>
                     <span className="text-xs text-green-600 font-medium">
-                      {isProvider ? t("Provider") : t("User")}
+                      {getCurrentUserInfo()?.type === 'provider' ? t("Provider") : t("User")}
+                      {isLoggedInAsBoth() && (
+                        <span className="ml-1 text-xs text-blue-600">
+                          (Switch)
+                        </span>
+                      )}
                     </span>
                   </div>
                   <ChevronDown className={cn(
@@ -242,46 +420,82 @@ export function Navigation() {
                             <User className="w-6 h-6 text-white" />
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-800">{userInfo.name}</p>
-                            <p className="text-sm text-green-600">{userInfo.email}</p>
+                            <p className="font-semibold text-slate-800">{getCurrentUserInfo()?.name}</p>
+                            <p className="text-sm text-green-600">{getCurrentUserInfo()?.email}</p>
+                            <p className="text-xs text-blue-600">
+                              {getCurrentUserInfo()?.type === 'provider' ? 'Provider Account' : 'User Account'}
+                            </p>
                           </div>
                         </div>
                       </div>
                       <div className="p-2">
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
-                          onClick={() => {
-                            navigate('/user-dashboard');
-                            setShowUserMenu(false);
-                          }}
-                        >
-                          <User className="w-4 h-4" />
-                          <span>{t("Dashboard")}</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
-                          onClick={() => {
-                            navigate('/user-urgent-requests');
-                            setShowUserMenu(false);
-                          }}
-                        >
-                          <AlertCircle className="w-4 h-4" />
-                          <span>{t("My Requests")}</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
-                          onClick={() => {
-                            navigate('/create-live-request');
-                            setShowUserMenu(false);
-                          }}
-                        >
-                          <AlertCircle className="w-4 h-4" />
-                          <span>{t("Urgent Request")}</span>
-                        </Button>
-                        {isProvider && (
+                        {/* Account switching options when logged in as both */}
+                        {isLoggedInAsBoth() && (
+                          <>
+                            <div className="px-3 py-2 text-xs font-medium text-slate-500 border-b border-green-100">
+                              Switch Account
+                            </div>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                              onClick={() => handleSwitchAccount('user')}
+                            >
+                              <User className="w-4 h-4" />
+                              <span>Switch to User Account</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                              onClick={() => handleSwitchAccount('provider')}
+                            >
+                              <FileText className="w-4 h-4" />
+                              <span>Switch to Provider Account</span>
+                            </Button>
+                            <div className="border-t border-green-100 my-2"></div>
+                          </>
+                        )}
+
+                        {/* User-specific menu items */}
+                        {currentAccountType === 'user' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                              onClick={() => {
+                                navigate('/user-dashboard');
+                                setShowUserMenu(false);
+                              }}
+                            >
+                              <User className="w-4 h-4" />
+                              <span>{t("Dashboard")}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                              onClick={() => {
+                                navigate('/user-urgent-requests');
+                                setShowUserMenu(false);
+                              }}
+                            >
+                              <AlertCircle className="w-4 h-4" />
+                              <span>{t("My Requests")}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700"
+                              onClick={() => {
+                                navigate('/create-live-request');
+                                setShowUserMenu(false);
+                              }}
+                            >
+                              <AlertCircle className="w-4 h-4" />
+                              <span>{t("Urgent Request")}</span>
+                            </Button>
+                          </>
+                        )}
+
+                        {/* Provider-specific menu items */}
+                        {currentAccountType === 'provider' && (
                           <>
                             <Button
                               variant="ghost"
@@ -313,50 +527,13 @@ export function Navigation() {
                           className="w-full justify-start gap-3 p-3 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={handleLogout}
                         >
-                                                  <LogOut className="w-4 h-4" />
-                        <span>{t("Logout")}</span>
-                      </Button>
+                          <LogOut className="w-4 h-4" />
+                          <span>{t("Logout")}</span>
+                        </Button>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-            ) : (
-              // User is not logged in - show login buttons
-              <div className="flex items-center gap-3">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.8, duration: 0.3 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button variant="outline" size="sm" asChild className="rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
-                    <Link to="/user-login">{t("User Login")}</Link>
-                  </Button>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.85, duration: 0.3 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button variant="outline" size="sm" asChild className="rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
-                    <Link to="/provider-login">{t("Provider Login")}</Link>
-                  </Button>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.9, duration: 0.3 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button size="sm" asChild className="rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg text-white">
-                    <Link to="/become-provider">{t("Become Provider")}</Link>
-                  </Button>
-                </motion.div>
               </div>
             )}
           </motion.div>
@@ -426,9 +603,38 @@ export function Navigation() {
                   </div>
                 </div>
 
-                {/* Mobile User Menu or Login Buttons */}
-                {userInfo ? (
-                  // User is logged in - show user menu
+                {/* Mobile Login Buttons - Conditionally Visible */}
+                <div className="border-t border-green-200 pt-6 mt-6 space-y-3 px-4">
+                  {/* Show User Login only if not logged in as user AND not logged in as both */}
+                  {currentAccountType !== 'user' && !isLoggedInAsBoth() && (
+                    <Button variant="outline" size="sm" asChild className="w-full rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
+                      <Link to="/user-login" onClick={() => setIsOpen(false)}>
+                        {t("User Login")}
+                      </Link>
+                    </Button>
+                  )}
+                  
+                  {/* Show Provider Login only if not logged in as provider AND not logged in as both */}
+                  {currentAccountType !== 'provider' && !isLoggedInAsBoth() && (
+                    <Button variant="outline" size="sm" asChild className="w-full rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
+                      <Link to="/provider-login" onClick={() => setIsOpen(false)}>
+                        {t("Provider Login")}
+                      </Link>
+                    </Button>
+                  )}
+                  
+                  {/* Show Become Provider only if not logged in as provider AND not logged in as both */}
+                  {currentAccountType !== 'provider' && !isLoggedInAsBoth() && (
+                    <Button size="sm" asChild className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg text-white">
+                      <Link to="/become-provider" onClick={() => setIsOpen(false)}>
+                        {t("Become Provider")}
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Mobile User Menu - Show if logged in */}
+                {currentAccountType && (
                   <div className="border-t border-green-200 pt-6 mt-6">
                     <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-green-100/50">
                       <div className="flex items-center gap-3">
@@ -436,46 +642,97 @@ export function Navigation() {
                           <User className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-800">{userInfo.name}</p>
-                          <p className="text-sm text-green-600">{userInfo.email}</p>
+                          <p className="font-semibold text-slate-800">{getCurrentUserInfo()?.name}</p>
+                          <p className="text-sm text-green-600">{getCurrentUserInfo()?.email}</p>
+                          <p className="text-xs text-blue-600">
+                            {getCurrentUserInfo()?.type === 'provider' ? 'Provider Account' : 'User Account'}
+                          </p>
                         </div>
                       </div>
                     </div>
                     <div className="space-y-1 px-4">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
-                        onClick={() => {
-                          navigate('/user-dashboard');
-                          setIsOpen(false);
-                        }}
-                      >
-                        <User className="w-4 h-4" />
-                        {t("Dashboard")}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
-                        onClick={() => {
-                          navigate('/user-urgent-requests');
-                          setIsOpen(false);
-                        }}
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                        {t("My Requests")}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
-                        onClick={() => {
-                          navigate('/create-live-request');
-                          setIsOpen(false);
-                        }}
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                        {t("Urgent Request")}
-                      </Button>
-                      {isProvider && (
+                      {/* Account switching options when logged in as both */}
+                      {isLoggedInAsBoth() && (
+                        <>
+                          <div className="px-3 py-2 text-xs font-medium text-slate-500 border-b border-green-100">
+                            Switch Account
+                          </div>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            onClick={() => {
+                              handleSwitchAccount('user');
+                              setIsOpen(false);
+                            }}
+                          >
+                            <User className="w-4 h-4" />
+                            <span>Switch to User Account</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            onClick={() => {
+                              handleSwitchAccount('provider');
+                              setIsOpen(false);
+                            }}
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span>Switch to Provider Account</span>
+                          </Button>
+                          <div className="border-t border-green-100 my-2"></div>
+                        </>
+                      )}
+
+                      {/* Notification Button */}
+                      <div className="px-4 py-2">
+                        <NotificationDropdown 
+                          currentUserId={getCurrentUserInfo()?.id || ''} 
+                          currentUserType={currentAccountType}
+                          onOpenChat={handleOpenChat}
+                        />
+                      </div>
+
+                      {/* User-specific menu items */}
+                      {currentAccountType === 'user' && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            onClick={() => {
+                              navigate('/user-dashboard');
+                              setIsOpen(false);
+                            }}
+                          >
+                            <User className="w-4 h-4" />
+                            {t("Dashboard")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            onClick={() => {
+                              navigate('/user-urgent-requests');
+                              setIsOpen(false);
+                            }}
+                          >
+                            <AlertCircle className="w-4 h-4" />
+                            {t("My Requests")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            onClick={() => {
+                              navigate('/create-live-request');
+                              setIsOpen(false);
+                            }}
+                          >
+                            <AlertCircle className="w-4 h-4" />
+                            {t("Urgent Request")}
+                          </Button>
+                        </>
+                      )}
+
+                      {/* Provider-specific menu items */}
+                      {currentAccountType === 'provider' && (
                         <>
                           <Button
                             variant="ghost"
@@ -501,6 +758,7 @@ export function Navigation() {
                           </Button>
                         </>
                       )}
+
                       <Button
                         variant="ghost"
                         className="w-full justify-start gap-3 p-4 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -513,25 +771,6 @@ export function Navigation() {
                         {t("Logout")}
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  // User is not logged in - show login buttons
-                  <div className="border-t border-green-200 pt-6 mt-6 space-y-3 px-4">
-                    <Button variant="outline" size="sm" asChild className="w-full rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
-                      <Link to="/user-login" onClick={() => setIsOpen(false)}>
-                        {t("User Login")}
-                      </Link>
-                    </Button>
-                    <Button variant="outline" size="sm" asChild className="w-full rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
-                      <Link to="/provider-login" onClick={() => setIsOpen(false)}>
-                        {t("Provider Login")}
-                      </Link>
-                    </Button>
-                    <Button size="sm" asChild className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg text-white">
-                      <Link to="/become-provider" onClick={() => setIsOpen(false)}>
-                        {t("Become Provider")}
-                      </Link>
-                    </Button>
                   </div>
                 )}
               </div>

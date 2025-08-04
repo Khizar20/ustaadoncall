@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Navigation } from "@/components/ui/navigation";
 import ChatModal from "@/components/ChatModal";
 import MessageNotification from "@/components/MessageNotification";
@@ -111,9 +111,7 @@ const UserDashboard = () => {
   const [showChatForBooking, setShowChatForBooking] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Token management
-  const TOKEN_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const checkAuth = () => {
@@ -123,14 +121,6 @@ const UserDashboard = () => {
 
       if (!storedUserInfo || !storedToken || !tokenData) {
         navigate('/user-login');
-        return;
-      }
-
-      // Check token expiry
-      const { timestamp } = JSON.parse(tokenData);
-      const now = Date.now();
-      if (now - timestamp > TOKEN_EXPIRY) {
-        handleLogout();
         return;
       }
 
@@ -147,6 +137,21 @@ const UserDashboard = () => {
     checkAuth();
     setIsLoading(false);
   }, [navigate]);
+
+  // Handle booking parameter from URL to open chat
+  useEffect(() => {
+    const bookingId = searchParams.get('booking');
+    console.log('🔔 [USER_DASHBOARD] URL search params:', searchParams.toString());
+    console.log('🔔 [USER_DASHBOARD] Booking ID from URL:', bookingId);
+    
+    if (bookingId) {
+      console.log('🔔 [USER_DASHBOARD] Setting showChatForBooking to:', bookingId);
+      setShowChatForBooking(bookingId);
+      // Clear the URL parameter after setting the chat
+      console.log('🔔 [USER_DASHBOARD] Clearing URL parameter');
+      navigate('/user-dashboard', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Fetch user's bookings
   useEffect(() => {
@@ -207,6 +212,10 @@ const UserDashboard = () => {
       localStorage.removeItem('user_token');
       localStorage.removeItem('user_token_data');
       localStorage.removeItem('user_info');
+      
+      // Dispatch custom event to notify Navigation component
+      window.dispatchEvent(new CustomEvent('auth-state-changed'));
+      
       toast({
         title: "Logged Out",
         description: "You have been successfully logged out.",
@@ -258,6 +267,12 @@ const UserDashboard = () => {
     }
   };
 
+  const handleOpenChat = (bookingId: string) => {
+    console.log('🔔 [USER_DASHBOARD] handleOpenChat called with bookingId:', bookingId);
+    // Navigate to chat view for this booking
+    navigate(`/user-dashboard?booking=${bookingId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -307,6 +322,7 @@ const UserDashboard = () => {
                     className="ml-auto"
                   />
                 </Button>
+
                 <Button
                   variant={activeTab === 'favorites' ? 'default' : 'ghost'}
                   className="w-full justify-start"
@@ -359,6 +375,7 @@ const UserDashboard = () => {
                   <NotificationDropdown 
                     currentUserId={userInfo?.id || ''} 
                     currentUserType="user"
+                    onOpenChat={handleOpenChat}
                   />
                 </div>
 
@@ -565,16 +582,6 @@ const UserDashboard = () => {
                           </div>
                         </CardContent>
                         
-                        {/* Chat for this booking */}
-                        {/* Chat Modal for this booking */}
-                        <ChatModal
-                          isOpen={showChatForBooking === booking.id}
-                          onClose={() => setShowChatForBooking(null)}
-                          bookingId={booking.id}
-                          currentUserId={userInfo?.id || ''}
-                          currentUserType="user"
-                          otherPartyName={booking.provider_name}
-                        />
                       </Card>
                      ))}
                    </div>
@@ -652,6 +659,17 @@ const UserDashboard = () => {
         <MessageNotification 
           currentUserId={userInfo.id} 
           currentUserType="user" 
+        />
+      )}
+
+      {/* Chat Modal - rendered outside tab content so it's always available */}
+      {showChatForBooking && userInfo && (
+        <ChatModal
+          isOpen={!!showChatForBooking}
+          onClose={() => setShowChatForBooking(null)}
+          bookingId={showChatForBooking}
+          currentUserId={userInfo.id}
+          currentUserType="user"
         />
       )}
     </div>

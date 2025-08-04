@@ -266,7 +266,7 @@ export const coreTranslations: TranslationKey = {
   "Server error": { en: "Server error", ur: "سرور کی غلطی" },
   "Page not found": { en: "Page not found", ur: "صفحہ نہیں ملا" },
   "Access denied": { en: "Access denied", ur: "رسائی مسترد" },
-  "Session expired": { en: "Session expired", ur: "سیشن ختم ہو گیا" },
+
   "Welcome Back": { en: "Welcome Back", ur: "خوش آمدید" },
   "Sign in to your UstaadOnCall account": { en: "Sign in to your UstaadOnCall account", ur: "اپنے UstaadOnCall اکاؤنٹ میں سائن ان کریں" },
   "Enter your email": { en: "Enter your email", ur: "اپنا ای میل درج کریں" },
@@ -355,11 +355,60 @@ export const coreTranslations: TranslationKey = {
   "Missing Documents": { en: "Missing Documents", ur: "غائب دستاویزات" },
   "Please upload all required documents.": { en: "Please upload all required documents.", ur: "براہ کرم تمام ضروری دستاویزات اپ لوڈ کریں۔" },
   "Application Submitted!": { en: "Application Submitted!", ur: "درخواست جمع کر دی گئی!" },
-  "Your provider application has been submitted successfully. We'll review it and get back to you soon.": { en: "Your provider application has been submitted successfully. We'll review it and get back to you soon.", ur: "آپ کی سروس پرووائیڈر کی درخواست کامیابی سے جمع کر دی گئی ہے۔ ہم اس کا جائزہ لیں گے اور جلد آپ سے رابطہ کریں گے۔" },
+  "Your provider application has been submitted successfully. We'll review it and get back to you soon.": { en: "Your provider application has been submitted successfully. We'll review it and get back to you soon.", ur: "آپ کی سروس پرووائیڈر کی درخواست کامیابی سے جمع کر دی گئی ہے۔ ہم اس کا جائزہ لیں گے اور جلد ہی آپ سے رابطہ کریں گے۔" },
+  
+
+  "12345-1234567-1": { en: "12345-1234567-1", ur: "12345-1234567-1" },
   "Price must be at least 100 PKR": { en: "Price must be at least 100 PKR", ur: "قیمت کم از کم 100 پاکستانی روپے ہونی چاہیے" },
   "Job name is required": { en: "Job name is required", ur: "کام کا نام ضروری ہے" },
   "Error": { en: "Error", ur: "غلطی" },
-  "Failed to submit application. Please try again.": { en: "Failed to submit application. Please try again.", ur: "درخواست جمع کرنے میں ناکام۔ براہ کرم دوبارہ کوشش کریں۔" }
+  "Failed to submit application. Please try again.": { en: "Failed to submit application. Please try again.", ur: "درخواست جمع کرنے میں ناکام۔ براہ کرم دوبارہ کوشش کریں۔" },
+  "Authentication Required": { en: "Authentication Required", ur: "تصدیق کی ضرورت ہے" },
+  "Please log in to submit your provider application.": { en: "Please log in to submit your provider application.", ur: "براہ کرم اپنی سروس پرووائیڈر کی درخواست جمع کرنے کے لیے لاگ ان کریں۔" },
+  "Checking authentication...": { en: "Checking authentication...", ur: "تصدیق کی جانچ کی جا رہی ہے..." },
+  "Please log in to access the application form.": { en: "Please log in to access the application form.", ur: "براہ کرم درخواست فارم تک رسائی کے لیے لاگ ان کریں۔" },
+  "Please log in to submit your application.": { en: "Please log in to submit your application.", ur: "براہ کرم اپنی درخواست جمع کرنے کے لیے لاگ ان کریں۔" },
+  "You have already submitted an application. Please contact support if you need to make changes.": { en: "You have already submitted an application. Please contact support if you need to make changes.", ur: "آپ نے پہلے ہی ایک درخواست جمع کر دی ہے۔ اگر آپ کو تبدیلیاں کرنے کی ضرورت ہے تو براہ کرم سپورٹ سے رابطہ کریں۔" },
+  "Network error. Please check your internet connection and try again.": { en: "Network error. Please check your internet connection and try again.", ur: "نیٹ ورک کی غلطی۔ براہ کرم اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔" },
+  "Invalid data provided. Please check your information and try again.": { en: "Invalid data provided. Please check your information and try again.", ur: "غلط ڈیٹا فراہم کیا گیا۔ براہ کرم اپنی معلومات چیک کریں اور دوبارہ کوشش کریں۔" },
+  
+  // Email verification messages
+  "Email Verified Successfully!": { en: "Email Verified Successfully!", ur: "ای میل کی تصدیق کامیابی سے ہو گئی!" },
+  "Your email has been verified. You can now log in with your credentials.": { en: "Your email has been verified. You can now log in with your credentials.", ur: "آپ کی ای میل کی تصدیق ہو گئی ہے۔ اب آپ اپنے کریڈینشلز کے ساتھ لاگ ان کر سکتے ہیں۔" },
+  "Registration Successful!": { en: "Registration Successful!", ur: "رجسٹریشن کامیاب!" },
+  "Your account has been created successfully. Please check your email for verification.": { en: "Your account has been created successfully. Please check your email for verification.", ur: "آپ کا اکاؤنٹ کامیابی سے بنا دیا گیا ہے۔ براہ کرم تصدیق کے لیے اپنی ای میل چیک کریں۔" },
+  "Next Steps:": { en: "Next Steps:", ur: "اگلے اقدامات:" },
+  "Check your email for verification link": { en: "Check your email for verification link", ur: "تصدیق کے لنک کے لیے اپنی ای میل چیک کریں" },
+  "Click the verification link to activate your account": { en: "Click the verification link to activate your account", ur: "اپنا اکاؤنٹ فعال کرنے کے لیے تصدیق کے لنک پر کلک کریں" },
+  "Once verified, you can log in to your account": { en: "Once verified, you can log in to your account", ur: "تصدیق کے بعد، آپ اپنے اکاؤنٹ میں لاگ ان کر سکتے ہیں" },
+  "Go to Login": { en: "Go to Login", ur: "لاگ ان پر جائیں" },
+  
+  // Improved error messages
+  "Invalid email or password. Please check your credentials and try again.": { en: "Invalid email or password. Please check your credentials and try again.", ur: "غلط ای میل یا پاس ورڈ۔ براہ کرم اپنے کریڈینشلز چیک کریں اور دوبارہ کوشش کریں۔" },
+  "No account found with this email. Please register first or check your email address.": { en: "No account found with this email. Please register first or check your email address.", ur: "اس ای میل کے ساتھ کوئی اکاؤنٹ نہیں ملا۔ براہ کرم پہلے رجسٹر کریں یا اپنا ای میل ایڈریس چیک کریں۔" },
+  "Please verify your email address before logging in. Check your email for the verification link.": { en: "Please verify your email address before logging in. Check your email for the verification link.", ur: "لاگ ان کرنے سے پہلے براہ کرم اپنے ای میل ایڈریس کی تصدیق کریں۔ تصدیق کے لنک کے لیے اپنی ای میل چیک کریں۔" },
+  "Access denied. This account is not registered as a service provider. Please apply to become a provider first.": { en: "Access denied. This account is not registered as a service provider. Please apply to become a provider first.", ur: "رسائی مسترد۔ یہ اکاؤنٹ سروس پرووائیڈر کے طور پر رجسٹر نہیں ہے۔ براہ کرم پہلے پرووائیڈر بننے کے لیے درخواست دیں۔" },
+  
+  // Login success messages
+  "Login Successful!": { en: "Login Successful!", ur: "لاگ ان کامیاب!" },
+  "Welcome back!": { en: "Welcome back!", ur: "خوش آمدید!" },
+  "Welcome back to your provider dashboard.": { en: "Welcome back to your provider dashboard.", ur: "آپ کے پرووائیڈر ڈیش بورڈ میں خوش آمدید۔" },
+  
+  // Security notice
+  "Security Notice:": { en: "Security Notice:", ur: "سیکیورٹی نوٹس:" },
+  "Your account will be verified via email before you can access our services.": { en: "Your account will be verified via email before you can access our services.", ur: "آپ کے اکاؤنٹ کی تصدیق ای میل کے ذریعے ہو گی اس سے پہلے کہ آپ ہماری خدمات تک رسائی حاصل کر سکیں۔" },
+  
+  // Pricing validation messages
+  "Price must be at least 100 PKR": { en: "Price must be at least 100 PKR", ur: "قیمت کم از کم 100 پاکستانی روپے ہونی چاہیے" },
+  "Job name is required": { en: "Job name is required", ur: "کام کا نام درکار ہے" },
+  "Pricing Errors": { en: "Pricing Errors", ur: "قیمتوں کی غلطیاں" },
+  "Please fix the pricing errors before continuing.": { en: "Please fix the pricing errors before continuing.", ur: "براہ کرم جاری رکھنے سے پہلے قیمتوں کی غلطیوں کو درست کریں۔" },
+  "No Services Selected": { en: "No Services Selected", ur: "کوئی خدمت منتخب نہیں کی گئی" },
+  "Please select at least one service you offer.": { en: "Please select at least one service you offer.", ur: "براہ کرم کم از کم ایک خدمت منتخب کریں جو آپ پیش کرتے ہیں۔" },
+  "Missing Documents": { en: "Missing Documents", ur: "دستاویزات غائب ہیں" },
+  "Please upload all required documents.": { en: "Please upload all required documents.", ur: "براہ کرم تمام مطلوبہ دستاویزات اپ لوڈ کریں۔" },
+  "Application Submitted!": { en: "Application Submitted!", ur: "درخواست جمع کر دی گئی!" },
+  "Your provider application has been submitted successfully. We'll review it and get back to you soon.": { en: "Your provider application has been submitted successfully. We'll review it and get back to you soon.", ur: "آپ کی سروس پرووائیڈر کی درخواست کامیابی سے جمع کر دی گئی ہے۔ ہم اس کا جائزہ لیں گے اور جلد ہی آپ سے رابطہ کریں گے۔" }
 };
 
 // Language context and utilities

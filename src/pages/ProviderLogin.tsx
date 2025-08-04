@@ -37,7 +37,17 @@ const ProviderLogin = () => {
       });
 
       if (error) {
-        throw new Error(error.message);
+        // Handle specific error messages for better user experience
+        let errorMessage = error.message;
+        if (error.message.includes("Invalid login credentials")) {
+          errorMessage = "Invalid email or password. Please check your credentials and try again.";
+        } else if (error.message.includes("User not found")) {
+          errorMessage = "No account found with this email. Please register first or check your email address.";
+        } else if (error.message.includes("Email not confirmed")) {
+          errorMessage = "Please verify your email address before logging in. Check your email for the verification link.";
+        }
+        
+        throw new Error(errorMessage);
       }
 
       if (data.user) {
@@ -49,7 +59,7 @@ const ProviderLogin = () => {
           .single();
 
         if (profileError || !profileData) {
-          throw new Error("Access denied. This account is not registered as a service provider.");
+          throw new Error("Access denied. This account is not registered as a service provider. Please apply to become a provider first.");
         }
 
         // Generate token data with timestamp
@@ -63,9 +73,12 @@ const ProviderLogin = () => {
         localStorage.setItem('provider_token', tokenData.token);
         localStorage.setItem('provider_token_data', JSON.stringify(tokenData));
 
+        // Dispatch custom event to notify Navigation component
+        window.dispatchEvent(new CustomEvent('auth-state-changed'));
+
         toast({
           title: "Login Successful!",
-          description: "Welcome back to your provider dashboard. Your session will expire after 30 minutes of inactivity.",
+          description: "Welcome back to your provider dashboard.",
         });
 
         navigate('/provider-dashboard');
@@ -214,7 +227,7 @@ const ProviderLogin = () => {
 
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-xs text-blue-700">
-                  <strong>Session Information:</strong> Your login session will automatically expire after 30 minutes of inactivity for security purposes.
+                  <strong>Session Information:</strong> Your login session will remain active until you manually log out.
                 </p>
               </div>
             </CardContent>

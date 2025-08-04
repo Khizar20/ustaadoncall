@@ -119,7 +119,7 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
   // Create marker with fallback
   const createMarker = useCallback((position: google.maps.LatLngLiteral, options: any) => {
     try {
-      // Try to use AdvancedMarkerElement if available
+      // Use AdvancedMarkerElement if available
       if (window.google?.maps?.marker?.AdvancedMarkerElement) {
         const markerElement = document.createElement('div');
         markerElement.innerHTML = options.content || '';
@@ -131,7 +131,8 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
           content: markerElement
         });
       } else {
-        // Fallback to regular Marker
+        // Fallback to regular Marker only if AdvancedMarkerElement is not available
+        console.warn('AdvancedMarkerElement not available, using deprecated Marker');
         return new window.google.maps.Marker({
           position,
           map: options.map,
@@ -140,7 +141,7 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
         });
       }
     } catch (error) {
-      console.warn('Error creating marker, using fallback:', error);
+      console.warn('Error creating AdvancedMarkerElement, using fallback:', error);
       // Final fallback to regular Marker
       return new window.google.maps.Marker({
         position,

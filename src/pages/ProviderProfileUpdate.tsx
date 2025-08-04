@@ -26,6 +26,8 @@ interface ProviderInfo {
   id: string;
   user_id: string;
   name: string;
+  email: string;
+  phone: string;
   service_category: string;
   bio: string;
   experience: string;
@@ -91,6 +93,7 @@ const ProviderProfileUpdate = () => {
           ...prev,
           email: user.email || "",
           name: providerData.name || "",
+          phone: providerData.phone || "",
           location: providerData.location || "",
           bio: providerData.bio || ""
         }));
@@ -115,6 +118,17 @@ const ProviderProfileUpdate = () => {
     setIsSaving(true);
 
     try {
+      // Validate phone number if provided
+      if (formData.phone) {
+        const phoneRegex = /^(\+92|0)?[0-9]{10}$/;
+        if (!phoneRegex.test(formData.phone)) {
+          throw new Error("Please enter a valid Pakistani phone number (e.g., 03xxxxxxxxx)");
+        }
+        if (formData.phone.length !== 11) {
+          throw new Error("Phone number must be exactly 11 characters long");
+        }
+      }
+
       // Validate password change if provided
       if (formData.new_password) {
         if (!formData.current_password) {
@@ -144,6 +158,7 @@ const ProviderProfileUpdate = () => {
         .from('providers')
         .update({
           name: formData.name,
+          phone: formData.phone,
           location: formData.location,
           bio: formData.bio
         })
@@ -157,6 +172,7 @@ const ProviderProfileUpdate = () => {
       const updatedProviderInfo = {
         ...providerInfo,
         name: formData.name,
+        phone: formData.phone,
         location: formData.location,
         bio: formData.bio
       };
@@ -282,6 +298,26 @@ const ProviderProfileUpdate = () => {
                         <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                       </div>
                     </div>
+
+                     <div className="space-y-2">
+                       <Label htmlFor="phone">Phone Number</Label>
+                       <div className="relative">
+                         <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                         <Input
+                           id="phone"
+                           name="phone"
+                           type="tel"
+                           value={formData.phone}
+                           onChange={handleChange}
+                           className="pl-10"
+                           placeholder="03xxxxxxxxx"
+                           maxLength={11}
+                         />
+                       </div>
+                       <p className="text-xs text-muted-foreground">
+                         Enter your 11-digit Pakistani phone number (e.g., 03xxxxxxxxx)
+                       </p>
+                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="location">Location</Label>

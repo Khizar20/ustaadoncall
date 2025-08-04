@@ -24,7 +24,7 @@ interface Provider {
   is_verified: boolean;
   rating: number;
   reviews_count: number;
-  jobs_pricing: Record<string, any[]>;
+  jobs_pricing: Record<string, Record<string, string | number>>;
   created_at: string;
   latitude?: number;
   longitude?: number;
@@ -136,7 +136,24 @@ const ProviderProfile = () => {
           throw new Error('Provider not found');
         }
 
-        setProvider(data);
+        // Parse jobs_pricing if it's a string
+        let parsedJobsPricing = data.jobs_pricing;
+        if (typeof data.jobs_pricing === 'string') {
+          try {
+            parsedJobsPricing = JSON.parse(data.jobs_pricing);
+          } catch (error) {
+            console.error('❌ Error parsing jobs_pricing string:', error);
+            parsedJobsPricing = null;
+          }
+        }
+
+        // Update the data with parsed jobs_pricing
+        const processedData = {
+          ...data,
+          jobs_pricing: parsedJobsPricing
+        };
+
+        setProvider(processedData);
       } catch (error: any) {
         console.error('Error fetching provider:', error);
         setError(error.message || 'Failed to load provider');
@@ -160,10 +177,11 @@ const ProviderProfile = () => {
     
     let minPrice = Infinity;
     Object.values(provider.jobs_pricing).forEach((services: any) => {
-      if (Array.isArray(services)) {
-        services.forEach((service: any) => {
-          if (service.price && service.price < minPrice) {
-            minPrice = service.price;
+      if (typeof services === 'object' && services !== null && !Array.isArray(services)) {
+        Object.values(services).forEach((price: any) => {
+          const numPrice = Number(price);
+          if (!isNaN(numPrice) && numPrice < minPrice) {
+            minPrice = numPrice;
           }
         });
       }
@@ -260,20 +278,20 @@ const ProviderProfile = () => {
       return;
     }
 
-         try {
-       const bookingData = {
-         user_id: currentUser.id,
-         provider_id: provider.id,
-         selected_services: selectedJobs,
-         total_amount: calculateTotalPrice(),
-         booking_date: selectedDate,
-         booking_time: selectedTime,
-         status: 'pending'
-       };
+    try {
+      const bookingData = {
+        user_id: currentUser.id,
+        provider_id: provider.id,
+        selected_services: selectedJobs,
+        total_amount: calculateTotalPrice(),
+        booking_date: selectedDate,
+        booking_time: selectedTime,
+        status: 'pending'
+      };
 
-       const { error } = await supabase
-         .from('bookings')
-         .insert([bookingData]);
+      const { error } = await supabase
+        .from('bookings')
+        .insert([bookingData]);
 
       if (error) {
         throw error;
@@ -438,7 +456,15 @@ const ProviderProfile = () => {
               )}
 
               {/* Services & Pricing */}
-              {provider.jobs_pricing && Object.keys(provider.jobs_pricing).length > 0 && (
+              {!provider.jobs_pricing || Object.keys(provider.jobs_pricing).length === 0 ? (
+                <Card className="p-8 border-border bg-card">
+                  <h2 className="text-2xl font-bold text-foreground mb-6">Services & Pricing</h2>
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No services and pricing information available.</p>
+                    <p className="text-sm text-muted-foreground mt-2">This provider hasn't set up their services yet.</p>
+                  </div>
+                </Card>
+              ) : (
                 <Card className="p-8 border-border bg-card">
                   <h2 className="text-2xl font-bold text-foreground mb-6">Services & Pricing</h2>
                   <div className="space-y-6">
@@ -446,29 +472,34 @@ const ProviderProfile = () => {
                       <div key={category} className="border-b border-border pb-6 last:border-b-0">
                         <h3 className="text-lg font-semibold text-foreground mb-3">{category}</h3>
                         <div className="space-y-3">
-                          {Array.isArray(services) && services.map((service: any, index: number) => (
-                            <div 
-                              key={index} 
-                              className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-all hover:bg-accent ${
-                                isJobSelected(category, service) 
-                                  ? 'border-primary bg-primary/10' 
-                                  : 'border-border bg-background'
-                              }`}
-                              onClick={() => handleJobSelection(category, service)}
-                            >
-                              <div className="flex items-center gap-3">
-                                <CheckCircle 
-                                  className={`h-5 w-5 ${
+                          {typeof services === 'object' && services !== null && !Array.isArray(services) && 
+                            Object.entries(services).map(([jobName, price], index: number) => {
+                              const service = { job: jobName, price: Number(price) };
+                              return (
+                                <div 
+                                  key={index} 
+                                  className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-all hover:bg-accent ${
                                     isJobSelected(category, service) 
-                                      ? 'text-primary' 
-                                      : 'text-muted-foreground'
+                                      ? 'border-primary bg-primary/10' 
+                                      : 'border-border bg-background'
                                   }`}
-                                />
-                                <span className="font-medium text-foreground">{service.job}</span>
-                              </div>
-                              <span className="font-semibold text-primary">{formatPrice(service.price)}</span>
-                            </div>
-                          ))}
+                                  onClick={() => handleJobSelection(category, service)}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <CheckCircle 
+                                      className={`h-5 w-5 ${
+                                        isJobSelected(category, service) 
+                                          ? 'text-primary' 
+                                          : 'text-muted-foreground'
+                                      }`}
+                                    />
+                                    <span className="font-medium text-foreground">{jobName}</span>
+                                  </div>
+                                  <span className="font-semibold text-primary">{formatPrice(Number(price))}</span>
+                                </div>
+                              );
+                            })
+                          }
                         </div>
                       </div>
                     ))}
@@ -547,55 +578,55 @@ const ProviderProfile = () => {
 
             {/* Sidebar */}
             <div className="space-y-6">
-                             {/* Contact Card */}
-               <Card className="p-6 border-border bg-card">
-                 <h3 className="text-lg font-semibold text-foreground mb-4">Contact</h3>
-                 
-                 {hasBooked ? (
-                   <div className="space-y-3">
-                     <Button 
-                       variant="outline" 
-                       className="w-full"
-                       onClick={() => setShowChat(true)}
-                     >
-                       <MessageSquare className="h-4 w-4 mr-2" />
-                       Send Message
-                     </Button>
-                     <Button variant="outline" className="w-full">
-                       <Phone className="h-4 w-4 mr-2" />
-                       Call Provider
-                     </Button>
-                   </div>
-                 ) : (
-                   <div className="space-y-4">
-                     <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                       <div className="flex items-center gap-3 mb-3">
-                         <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                         <span className="font-medium text-foreground">Send Message</span>
-                       </div>
-                       <p className="text-sm text-muted-foreground">
-                         Text the provider after booking an appointment
-                       </p>
-                     </div>
-                     
-                     <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                       <div className="flex items-center gap-3 mb-3">
-                         <Phone className="h-5 w-5 text-muted-foreground" />
-                         <span className="font-medium text-foreground">Call Provider</span>
-                       </div>
-                       <p className="text-sm text-muted-foreground">
-                         Call the provider after hiring them
-                       </p>
-                     </div>
-                     
-                     <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
-                       <p className="text-sm text-primary font-medium">
-                         Book an appointment to unlock contact features
-                       </p>
-                     </div>
-                   </div>
-                 )}
-               </Card>
+              {/* Contact Card */}
+              <Card className="p-6 border-border bg-card">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Contact</h3>
+                
+                {hasBooked ? (
+                  <div className="space-y-3">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => setShowChat(true)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Send Message
+                    </Button>
+                    <Button variant="outline" className="w-full">
+                      <Phone className="h-4 w-4 mr-2" />
+                      Call Provider
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
+                      <div className="flex items-center gap-3 mb-3">
+                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium text-foreground">Send Message</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Text the provider after booking an appointment
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Phone className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium text-foreground">Call Provider</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Call the provider after hiring them
+                      </p>
+                    </div>
+                    
+                    <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+                      <p className="text-sm text-primary font-medium">
+                        Book an appointment to unlock contact features
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </Card>
 
               {/* Verification Badge */}
               {provider.is_verified && (
