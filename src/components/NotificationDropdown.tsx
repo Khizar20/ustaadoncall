@@ -13,6 +13,7 @@ interface Notification {
   content: string;
   created_at: string;
   is_read: boolean;
+  unread_count: number; // Number of unread messages in this chat room
 }
 
 interface NotificationDropdownProps {
@@ -86,38 +87,52 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
             console.log('🔔 [NOTIFICATIONS] Found unread messages:', messages);
 
             if (messages) {
-              // Get sender names
+              // Group messages by chat room
+              const groupedMessages = messages.reduce((acc, message) => {
+                if (!acc[message.chat_room_id]) {
+                  acc[message.chat_room_id] = [];
+                }
+                acc[message.chat_room_id].push(message);
+                return acc;
+              }, {} as Record<string, any[]>);
+
+              console.log('🔔 [NOTIFICATIONS] Grouped messages by chat room:', groupedMessages);
+
+              // Create one notification per chat room
               const notificationsWithNames = await Promise.all(
-                messages.map(async (message) => {
+                Object.entries(groupedMessages).map(async ([chatRoomId, roomMessages]) => {
+                  const latestMessage = roomMessages[0]; // Messages are ordered by created_at desc
+                  
                   let senderName = 'Unknown';
                   
-                  if (message.sender_type === 'provider') {
+                  if (latestMessage.sender_type === 'provider') {
                     const { data: provider } = await supabase
                       .from('providers')
                       .select('name')
-                      .eq('id', message.sender_id)
+                      .eq('id', latestMessage.sender_id)
                       .single();
                     senderName = provider?.name || 'Provider';
                   } else {
                     const { data: user } = await supabase
                       .from('users')
                       .select('name')
-                      .eq('id', message.sender_id)
+                      .eq('id', latestMessage.sender_id)
                       .single();
                     senderName = user?.name || 'User';
                   }
 
                   // Find the chat room for this message to get booking_id
-                  const chatRoom = chatRooms.find(room => room.id === message.chat_room_id);
+                  const chatRoom = chatRooms.find(room => room.id === chatRoomId);
                   
                   return {
-                    id: message.id,
-                    chat_room_id: message.chat_room_id,
+                    id: `${chatRoomId}-${latestMessage.id}`, // Unique ID for the notification
+                    chat_room_id: chatRoomId,
                     booking_id: chatRoom?.booking_id || '',
                     sender_name: senderName,
-                    content: message.content,
-                    created_at: message.created_at,
-                    is_read: message.is_read
+                    content: latestMessage.content,
+                    created_at: latestMessage.created_at,
+                    is_read: false,
+                    unread_count: roomMessages.length
                   };
                 })
               );
@@ -183,7 +198,8 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
 
             if (booking) {
               console.log('🔔 [NOTIFICATIONS] New message belongs to current user');
-              // Get sender name
+              
+              // Get sender name first
               let senderName = 'Unknown';
               if (newMessage.sender_type === 'provider') {
                 const { data: provider } = await supabase
@@ -201,19 +217,43 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                 senderName = user?.name || 'User';
               }
 
-              const newNotification: Notification = {
-                id: newMessage.id,
-                chat_room_id: newMessage.chat_room_id,
-                booking_id: chatRoom.booking_id,
-                sender_name: senderName,
-                content: newMessage.content,
-                created_at: newMessage.created_at,
-                is_read: false
-              };
+              // Check if we already have a notification for this chat room
+              setNotifications(prev => {
+                const existingNotificationIndex = prev.findIndex(n => n.chat_room_id === newMessage.chat_room_id);
+                
+                if (existingNotificationIndex !== -1) {
+                  // Update existing notification with new message content and increment unread count
+                  const updatedNotifications = [...prev];
+                  updatedNotifications[existingNotificationIndex] = {
+                    ...updatedNotifications[existingNotificationIndex],
+                    content: newMessage.content,
+                    created_at: newMessage.created_at,
+                    unread_count: updatedNotifications[existingNotificationIndex].unread_count + 1
+                  };
+                  console.log('🔔 [NOTIFICATIONS] Updated existing notification for chat room:', newMessage.chat_room_id);
+                  return updatedNotifications;
+                } else {
+                  // Create new notification for this chat room
+                  const newNotification: Notification = {
+                    id: `${newMessage.chat_room_id}-${newMessage.id}`,
+                    chat_room_id: newMessage.chat_room_id,
+                    booking_id: chatRoom.booking_id,
+                    sender_name: senderName,
+                    content: newMessage.content,
+                    created_at: newMessage.created_at,
+                    is_read: false,
+                    unread_count: 1
+                  };
 
-              console.log('🔔 [NOTIFICATIONS] Adding new notification:', newNotification);
-              setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
-              setUnreadCount(prev => prev + 1);
+                  console.log('🔔 [NOTIFICATIONS] Adding new notification for chat room:', newMessage.chat_room_id);
+                  return [newNotification, ...prev.slice(0, 4)];
+                }
+              });
+              
+              setUnreadCount(prev => {
+                const existingNotification = notifications.find(n => n.chat_room_id === newMessage.chat_room_id);
+                return existingNotification ? prev : prev + 1;
+              });
             }
           }
         }
@@ -240,12 +280,28 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
   const markAsRead = async (notificationId: string) => {
     try {
       console.log('🔔 [NOTIFICATIONS] Marking notification as read:', notificationId);
-      await supabase
+      
+      // Find the notification to get the chat room ID
+      const notification = notifications.find(n => n.id === notificationId);
+      if (!notification) {
+        console.error('❌ [NOTIFICATIONS] Notification not found:', notificationId);
+        return;
+      }
+
+      // Mark all unread messages in this chat room as read
+      const { error } = await supabase
         .from('chat_messages')
         .update({ is_read: true })
-        .eq('id', notificationId);
+        .eq('chat_room_id', notification.chat_room_id)
+        .eq('is_read', false)
+        .neq('sender_id', currentUserId);
+
+      if (error) {
+        console.error('❌ [NOTIFICATIONS] Error marking messages as read:', error);
+        return;
+      }
       
-      console.log('✅ [NOTIFICATIONS] Successfully marked notification as read');
+      console.log('✅ [NOTIFICATIONS] Successfully marked all messages in chat room as read');
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
@@ -259,11 +315,18 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
     
     try {
       console.log('🔔 [NOTIFICATIONS] Marking all notifications as read');
-      const messageIds = notifications.map(n => n.id);
-      await supabase
-        .from('chat_messages')
-        .update({ is_read: true })
-        .in('id', messageIds);
+      
+      // Mark all unread messages from all chat rooms as read
+      const chatRoomIds = notifications.map(n => n.chat_room_id);
+      
+      if (chatRoomIds.length > 0) {
+        await supabase
+          .from('chat_messages')
+          .update({ is_read: true })
+          .in('chat_room_id', chatRoomIds)
+          .eq('is_read', false)
+          .neq('sender_id', currentUserId);
+      }
       
       setNotifications([]);
       setUnreadCount(0);
@@ -363,9 +426,16 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <p className="font-medium text-sm truncate">
-                            {notification.sender_name}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm truncate">
+                              {notification.sender_name}
+                            </p>
+                            {notification.unread_count > 1 && (
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-600">
+                                {notification.unread_count}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {formatTime(notification.created_at)}
                           </p>
