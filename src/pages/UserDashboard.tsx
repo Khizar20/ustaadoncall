@@ -13,7 +13,6 @@ import { Navigation } from "@/components/ui/navigation";
 import ChatModal from "@/components/ChatModal";
 import MessageNotification from "@/components/MessageNotification";
 import NotificationBadge from "@/components/NotificationBadge";
-import NotificationDropdown from "@/components/NotificationDropdown";
 import {
   User,
   Settings,
@@ -367,16 +366,9 @@ const UserDashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-3xl font-bold mb-2">Welcome back, {userInfo.name}!</h2>
-                    <p className="text-muted-foreground">Here's what's happening with your account</p>
-                  </div>
-                  <NotificationDropdown 
-                    currentUserId={userInfo?.id || ''} 
-                    currentUserType="user"
-                    onOpenChat={handleOpenChat}
-                  />
+                <div>
+                  <h2 className="text-3xl font-bold mb-2">Welcome back, {userInfo.name}!</h2>
+                  <p className="text-muted-foreground">Here's what's happening with your account</p>
                 </div>
 
                 {/* Stats Cards */}

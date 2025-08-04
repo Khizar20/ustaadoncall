@@ -51,6 +51,7 @@ export function Navigation() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [providerInfo, setProviderInfo] = useState<ProviderInfo | null>(null);
   const [currentAccountType, setCurrentAccountType] = useState<'user' | 'provider' | null>(null);
+  const [accountSwitchKey, setAccountSwitchKey] = useState(0); // Force re-render on account switch
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -95,20 +96,33 @@ export function Navigation() {
 
       // Determine current account type - preserve existing choice when both are logged in
       if (isUserLoggedIn && isProviderLoggedIn) {
-        // Both logged in - preserve current account type, only set if null
-        if (currentAccountType === null) {
+        // Both logged in - check for stored preference or default to user
+        const storedAccountType = localStorage.getItem('current_account_type') as 'user' | 'provider' | null;
+        
+        if (storedAccountType && (storedAccountType === 'user' || storedAccountType === 'provider')) {
+          console.log('🔔 [NAVIGATION] Using stored account type:', storedAccountType);
+          setCurrentAccountType(storedAccountType);
+        } else if (currentAccountType === null) {
           // Default to user account type if not set
+          console.log('🔔 [NAVIGATION] Setting default account type: user');
           setCurrentAccountType('user');
+          localStorage.setItem('current_account_type', 'user');
         }
         // If currentAccountType is already set, don't change it
       } else if (isUserLoggedIn && currentAccountType !== 'user') {
+        console.log('🔔 [NAVIGATION] Setting account type to user');
         setCurrentAccountType('user');
+        localStorage.setItem('current_account_type', 'user');
       } else if (isProviderLoggedIn && currentAccountType !== 'provider') {
+        console.log('🔔 [NAVIGATION] Setting account type to provider');
         setCurrentAccountType('provider');
+        localStorage.setItem('current_account_type', 'provider');
       } else if (!isUserLoggedIn && !isProviderLoggedIn) {
+        console.log('🔔 [NAVIGATION] No accounts logged in, clearing state');
         setCurrentAccountType(null);
         setUserInfo(null);
         setProviderInfo(null);
+        localStorage.removeItem('current_account_type');
       }
     };
 
@@ -130,6 +144,14 @@ export function Navigation() {
       window.removeEventListener('auth-state-changed', handleAuthChange);
     };
   }, []); // No dependencies to prevent re-running on navigation
+
+  // Handle account type persistence
+  useEffect(() => {
+    if (currentAccountType) {
+      localStorage.setItem('current_account_type', currentAccountType);
+      console.log('🔔 [NAVIGATION] Account type changed to:', currentAccountType);
+    }
+  }, [currentAccountType]);
 
   // Handle scroll effect
   useEffect(() => {
@@ -180,12 +202,23 @@ export function Navigation() {
   };
 
   const handleSwitchAccount = (accountType: 'user' | 'provider') => {
+    console.log('🔔 [NAVIGATION] Switching account to:', accountType);
+    console.log('🔔 [NAVIGATION] Previous account type:', currentAccountType);
+    
+    // Store the account type preference in localStorage
+    localStorage.setItem('current_account_type', accountType);
+    
+    // Force re-render by updating the key
+    setAccountSwitchKey(prev => prev + 1);
+    
     setCurrentAccountType(accountType);
     setShowUserMenu(false);
     
     if (accountType === 'user') {
+      console.log('🔔 [NAVIGATION] Navigating to user dashboard');
       navigate('/user-dashboard');
     } else {
+      console.log('🔔 [NAVIGATION] Navigating to provider dashboard');
       navigate('/provider-dashboard');
     }
   };
@@ -221,6 +254,7 @@ export function Navigation() {
 
   return (
     <motion.nav 
+      key={accountSwitchKey}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
