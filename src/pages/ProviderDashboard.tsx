@@ -6,6 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
@@ -82,6 +93,19 @@ interface Booking {
   user_id: string;
 }
 
+interface Review {
+  id: string;
+  booking_id: string;
+  customer_id: string;
+  provider_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  users: {
+    name: string;
+  };
+}
+
 const ProviderDashboard = () => {
   const [providerInfo, setProviderInfo] = useState<ProviderInfo | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -89,7 +113,21 @@ const ProviderDashboard = () => {
   const [isEditingServices, setIsEditingServices] = useState(false);
   const [services, setServices] = useState<ServiceCategory[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [showChatForBooking, setShowChatForBooking] = useState<string | null>(null);
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    isOpen: boolean;
+    bookingId: string | null;
+    action: string | null;
+    title: string;
+    description: string;
+  }>({
+    isOpen: false,
+    bookingId: null,
+    action: null,
+    title: '',
+    description: ''
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -155,6 +193,9 @@ const ProviderDashboard = () => {
 
       // Fetch provider's bookings
       await fetchBookings(providerData.id);
+      
+      // Fetch provider's reviews
+      await fetchReviews(providerData.id);
 
       // Handle auto-opening chat if booking ID is in URL
       const bookingId = searchParams.get('booking');
@@ -214,6 +255,99 @@ const ProviderDashboard = () => {
       });
     }
   };
+
+  const fetchReviews = async (providerId: string) => {
+    try {
+      // First, fetch reviews
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('provider_id', providerId)
+        .order('created_at', { ascending: false });
+
+      if (reviewsError) {
+        throw reviewsError;
+      }
+
+      // Then, fetch user names for each review
+      const reviewsWithUsers = await Promise.all(
+        (reviewsData || []).map(async (review) => {
+          try {
+            // Try to get user data from public.users table first
+            let { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', review.customer_id)
+              .single();
+
+            // If that fails, try auth.users
+            if (userError) {
+              const { data: authUserData, error: authUserError } = await supabase
+                .from('auth.users')
+                .select('name')
+                .eq('id', review.customer_id)
+                .single();
+
+              if (!authUserError && authUserData) {
+                userData = authUserData;
+                userError = null;
+              }
+            }
+
+            return {
+              ...review,
+              users: {
+                name: userError ? 'Anonymous' : (userData?.name || 'Anonymous')
+              }
+            };
+          } catch (error) {
+            console.error('Error fetching user data for review:', error);
+            return {
+              ...review,
+              users: {
+                name: 'Anonymous'
+              }
+            };
+          }
+        })
+      );
+
+      setReviews(reviewsWithUsers);
+    } catch (error: any) {
+      console.error('Error fetching reviews:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load reviews.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Real-time subscription for new reviews
+  useEffect(() => {
+    if (!providerInfo?.id) return;
+
+    const subscription = supabase
+      .channel(`reviews_${providerInfo.id}`)
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'reviews',
+          filter: `provider_id=eq.${providerInfo.id}`
+        },
+        (payload) => {
+          console.log('🔄 New review received:', payload);
+          // Refresh reviews when a new review is added
+          fetchReviews(providerInfo.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [providerInfo?.id]);
 
   const handleLogout = async () => {
     try {
@@ -375,32 +509,101 @@ const ProviderDashboard = () => {
     navigate(`/provider-dashboard?booking=${bookingId}`);
   };
 
-  const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+  const handleCallUser = (userPhone: string) => {
+    if (!userPhone) {
+      toast({
+        title: "Phone Number Not Available",
+        description: "This user's phone number is not available.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Open phone app with user's number
+    window.open(`tel:${userPhone}`, '_self');
+  };
+
+  const showConfirmationDialog = (bookingId: string, action: string, title: string, description: string) => {
+    setConfirmationDialog({
+      isOpen: true,
+      bookingId,
+      action,
+      title,
+      description
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmationDialog.bookingId || !confirmationDialog.action) return;
+
     try {
+      // First, get the booking details to create notification
+      const { data: bookingData, error: bookingError } = await supabase
+        .from('bookings')
+        .select('user_id, provider_id, booking_date, booking_time, total_amount')
+        .eq('id', confirmationDialog.bookingId)
+        .single();
+
+      if (bookingError) {
+        throw bookingError;
+      }
+
+      // Update booking status
       const { error } = await supabase
         .from('bookings')
         .update({ 
-          status: newStatus,
-          confirmed_at: newStatus === 'confirmed' ? new Date().toISOString() : null
+          status: confirmationDialog.action,
+          confirmed_at: confirmationDialog.action === 'confirmed' ? new Date().toISOString() : null
         })
-        .eq('id', bookingId);
+        .eq('id', confirmationDialog.bookingId);
 
       if (error) {
         throw error;
       }
 
+      // Create notification for the user
+      const notificationType = confirmationDialog.action === 'confirmed' ? 'booking_confirmed' : 'booking_rejected';
+      const title = confirmationDialog.action === 'confirmed' ? 'Booking Confirmed' : 'Booking Rejected';
+      const message = confirmationDialog.action === 'confirmed' 
+        ? `Your booking for ${formatDate(bookingData.booking_date)} at ${bookingData.booking_time} has been confirmed by the provider.`
+        : `Your booking for ${formatDate(bookingData.booking_date)} at ${bookingData.booking_time} has been rejected by the provider.`;
+
+      console.log('🔔 [PROVIDER] Creating notification:', {
+        user_id: bookingData.user_id,
+        notification_type: notificationType,
+        title: title,
+        message: message
+      });
+
+      const { data: notificationData, error: notificationError } = await supabase
+        .from('user_notifications')
+        .insert({
+          user_id: bookingData.user_id,
+          notification_type: notificationType,
+          title: title,
+          message: message
+        })
+        .select();
+
+      if (notificationError) {
+        console.error('❌ [PROVIDER] Error creating notification:', notificationError);
+        // Don't throw error for notification failure, as booking update was successful
+      } else {
+        console.log('✅ [PROVIDER] Notification created successfully:', notificationData);
+      }
+
       // Update local state
       setBookings(prevBookings => 
         prevBookings.map(booking => 
-          booking.id === bookingId 
-            ? { ...booking, status: newStatus }
+          booking.id === confirmationDialog.bookingId 
+            ? { ...booking, status: confirmationDialog.action }
             : booking
         )
       );
 
       toast({
         title: "Status Updated",
-        description: `Booking status updated to ${newStatus}.`,
+        description: `Booking status updated to ${confirmationDialog.action}. User has been notified.`,
       });
     } catch (error: any) {
       console.error('Error updating booking status:', error);
@@ -409,7 +612,25 @@ const ProviderDashboard = () => {
         description: error.message || "Failed to update booking status.",
         variant: "destructive"
       });
+    } finally {
+      setConfirmationDialog({
+        isOpen: false,
+        bookingId: null,
+        action: null,
+        title: '',
+        description: ''
+      });
     }
+  };
+
+  const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+    // This function is now deprecated, use showConfirmationDialog instead
+    showConfirmationDialog(bookingId, newStatus, 
+      newStatus === 'confirmed' ? 'Confirm Booking' : 'Reject Booking',
+      newStatus === 'confirmed' 
+        ? 'Are you sure you want to confirm this booking? This action cannot be undone.'
+        : 'Are you sure you want to reject this booking? This action cannot be undone.'
+    );
   };
 
   if (isLoading) {
@@ -681,7 +902,7 @@ const ProviderDashboard = () => {
                               <div className="flex gap-2 pt-3 border-t">
                                 <Button 
                                   size="sm" 
-                                  onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                  onClick={() => showConfirmationDialog(booking.id, 'confirmed', 'Confirm Booking', 'Are you sure you want to confirm this booking? This action cannot be undone.')}
                                   className="flex-1"
                                 >
                                   <CheckCircle className="w-4 h-4 mr-1" />
@@ -690,7 +911,7 @@ const ProviderDashboard = () => {
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => updateBookingStatus(booking.id, 'rejected')}
+                                  onClick={() => showConfirmationDialog(booking.id, 'rejected', 'Reject Booking', 'Are you sure you want to reject this booking? This action cannot be undone.')}
                                   className="flex-1"
                                 >
                                   <X className="w-4 h-4 mr-1" />
@@ -703,7 +924,7 @@ const ProviderDashboard = () => {
                               <div className="flex gap-2 pt-3 border-t">
                                 <Button 
                                   size="sm" 
-                                  onClick={() => updateBookingStatus(booking.id, 'completed')}
+                                  onClick={() => showConfirmationDialog(booking.id, 'completed', 'Mark Complete', 'Are you sure you want to mark this booking as completed? This action cannot be undone.')}
                                   className="flex-1"
                                 >
                                   <CheckCircle className="w-4 h-4 mr-1" />
@@ -712,7 +933,7 @@ const ProviderDashboard = () => {
                               </div>
                             )}
 
-                            {/* Chat Button */}
+                            {/* Chat and Call Buttons */}
                             <div className="flex gap-2 pt-3 border-t">
                               <Button 
                                 size="sm" 
@@ -727,6 +948,15 @@ const ProviderDashboard = () => {
                                   currentUserType="provider"
                                   className="ml-1"
                                 />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleCallUser(booking.user_phone)}
+                                className="flex-1"
+                              >
+                                <Phone className="w-4 h-4 mr-1" />
+                                Call
                               </Button>
                             </div>
 
@@ -1097,7 +1327,7 @@ const ProviderDashboard = () => {
                               <>
                                 <Button 
                                   size="sm" 
-                                  onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                  onClick={() => showConfirmationDialog(booking.id, 'confirmed', 'Confirm Booking', 'Are you sure you want to confirm this booking? This action cannot be undone.')}
                                   className="flex-1 bg-green-600 hover:bg-green-700"
                                 >
                                   <Check className="w-4 h-4 mr-1" />
@@ -1106,7 +1336,7 @@ const ProviderDashboard = () => {
                                 <Button 
                                   size="sm" 
                                   variant="destructive"
-                                  onClick={() => updateBookingStatus(booking.id, 'rejected')}
+                                  onClick={() => showConfirmationDialog(booking.id, 'rejected', 'Reject Booking', 'Are you sure you want to reject this booking? This action cannot be undone.')}
                                   className="flex-1"
                                 >
                                   <X className="w-4 h-4 mr-1" />
@@ -1118,7 +1348,7 @@ const ProviderDashboard = () => {
                             {booking.status === 'confirmed' && (
                               <Button 
                                 size="sm" 
-                                onClick={() => updateBookingStatus(booking.id, 'completed')}
+                                onClick={() => showConfirmationDialog(booking.id, 'completed', 'Mark Complete', 'Are you sure you want to mark this booking as completed? This action cannot be undone.')}
                                 className="flex-1 bg-blue-600 hover:bg-blue-700"
                               >
                                 <CheckCircle className="w-4 h-4 mr-1" />
@@ -1182,17 +1412,62 @@ const ProviderDashboard = () => {
                   <p className="text-muted-foreground">View customer feedback and ratings</p>
                 </div>
 
-                <Card>
-                  <CardContent className="p-8">
-                    <div className="text-center">
-                      <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No reviews yet</h3>
-                      <p className="text-muted-foreground">
-                        Customer reviews and ratings will appear here once you start receiving feedback.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {reviews.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8">
+                      <div className="text-center">
+                        <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No reviews yet</h3>
+                        <p className="text-muted-foreground">
+                          Customer reviews and ratings will appear here once you start receiving feedback.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <Card key={review.id}>
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                <span className="text-primary font-semibold">
+                                  {review.users?.name?.charAt(0) || 'U'}
+                                </span>
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900">
+                                  {review.users?.name || 'Anonymous'}
+                                </h4>
+                                <p className="text-sm text-gray-500">
+                                  {formatDate(review.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-4 h-4 ${
+                                    star <= review.rating
+                                      ? 'fill-yellow-400 text-yellow-400'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          {review.comment && (
+                            <p className="text-gray-700 leading-relaxed">
+                              "{review.comment}"
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1255,6 +1530,34 @@ const ProviderDashboard = () => {
           currentUserType="provider"
         />
       )}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmationDialog.isOpen} onOpenChange={(open) => {
+        if (!open) {
+          setConfirmationDialog({
+            isOpen: false,
+            bookingId: null,
+            action: null,
+            title: '',
+            description: ''
+          });
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmationDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmationDialog.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAction}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

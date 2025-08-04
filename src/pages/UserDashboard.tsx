@@ -6,6 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
@@ -13,6 +24,7 @@ import { Navigation } from "@/components/ui/navigation";
 import ChatModal from "@/components/ChatModal";
 import MessageNotification from "@/components/MessageNotification";
 import NotificationBadge from "@/components/NotificationBadge";
+import ReviewModal from "@/components/ReviewModal";
 import {
   User,
   Settings,
@@ -108,6 +120,25 @@ const UserDashboard = () => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showChatForBooking, setShowChatForBooking] = useState<string | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState<{
+    isOpen: boolean;
+    bookingId: string;
+    providerId: string;
+    providerName: string;
+  } | null>(null);
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    isOpen: boolean;
+    bookingId: string | null;
+    action: string | null;
+    title: string;
+    description: string;
+  }>({
+    isOpen: false,
+    bookingId: null,
+    action: null,
+    title: '',
+    description: ''
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -174,24 +205,67 @@ const UserDashboard = () => {
           throw error;
         }
 
-        // Transform the data to match our interface
-        const transformedBookings = data?.map(booking => ({
-          id: booking.id,
-          provider_name: booking.providers?.name || 'Unknown Provider',
-          service_category: booking.providers?.service_category || 'General',
-          booking_date: booking.booking_date,
-          booking_time: booking.booking_time,
-          status: booking.status,
-          total_amount: booking.total_amount,
-          selected_services: booking.selected_services || [],
-          service_location: booking.service_location,
-          contact_phone: booking.contact_phone,
-          special_instructions: booking.special_instructions,
-          created_at: booking.created_at,
-          provider_id: booking.provider_id
-        })) || [];
+        // Transform the data to match our interface and fetch provider phone numbers
+        const transformedBookings = await Promise.all(
+          (data || []).map(async (booking) => {
+            // Fetch provider's phone number directly from providers table
+            let providerPhone = booking.contact_phone; // Use existing contact_phone as fallback
+            try {
+              const { data: providerData, error: providerError } = await supabase
+                .from('providers')
+                .select('phone')
+                .eq('id', booking.provider_id)
+                .single();
+              
+              if (!providerError && providerData && providerData.phone) {
+                providerPhone = providerData.phone;
+              }
+            } catch (error) {
+              console.log('Could not fetch provider phone number:', error);
+            }
+
+            return {
+              id: booking.id,
+              provider_name: booking.providers?.name || 'Unknown Provider',
+              service_category: booking.providers?.service_category || 'General',
+              booking_date: booking.booking_date,
+              booking_time: booking.booking_time,
+              status: booking.status,
+              total_amount: booking.total_amount,
+              selected_services: booking.selected_services || [],
+              service_location: booking.service_location,
+              contact_phone: providerPhone,
+              special_instructions: booking.special_instructions,
+              created_at: booking.created_at,
+              provider_id: booking.provider_id
+            };
+          })
+        );
 
         setBookings(transformedBookings);
+
+        // Check for completed bookings that need reviews
+        const completedBookings = transformedBookings.filter(booking => booking.status === 'completed');
+        for (const booking of completedBookings) {
+          // Check if user has already reviewed this booking
+          const { data: existingReview } = await supabase
+            .from('reviews')
+            .select('id')
+            .eq('booking_id', booking.id)
+            .eq('customer_id', userInfo.id)
+            .single();
+
+          if (!existingReview) {
+            // Show review modal for this booking
+            setShowReviewModal({
+              isOpen: true,
+              bookingId: booking.id,
+              providerId: booking.provider_id,
+              providerName: booking.provider_name
+            });
+            break; // Only show one review modal at a time
+          }
+        }
       } catch (error: any) {
         console.error('Error fetching bookings:', error);
         toast({
@@ -204,6 +278,62 @@ const UserDashboard = () => {
 
     fetchBookings();
   }, [userInfo?.id, toast]);
+
+  // Real-time subscription for booking status changes
+  useEffect(() => {
+    if (!userInfo?.id) return;
+
+    const subscription = supabase
+      .channel(`user_bookings_${userInfo.id}`)
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'bookings',
+          filter: `user_id=eq.${userInfo.id}`
+        },
+        async (payload) => {
+          const updatedBooking = payload.new as any;
+          
+          // If booking status changed to completed, check if review is needed
+          if (updatedBooking.status === 'completed') {
+            // Check if user has already reviewed this booking
+            const { data: existingReview } = await supabase
+              .from('reviews')
+              .select('id')
+              .eq('booking_id', updatedBooking.id)
+              .eq('customer_id', userInfo.id)
+              .single();
+
+            if (!existingReview) {
+              // Get provider name for the review modal
+              const { data: booking } = await supabase
+                .from('bookings')
+                .select(`
+                  *,
+                  providers (name)
+                `)
+                .eq('id', updatedBooking.id)
+                .single();
+
+              if (booking) {
+                setShowReviewModal({
+                  isOpen: true,
+                  bookingId: updatedBooking.id,
+                  providerId: updatedBooking.provider_id,
+                  providerName: booking.providers?.name || 'Unknown Provider'
+                });
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [userInfo?.id]);
 
   const handleLogout = async () => {
     try {
@@ -270,6 +400,76 @@ const UserDashboard = () => {
     console.log('🔔 [USER_DASHBOARD] handleOpenChat called with bookingId:', bookingId);
     // Navigate to chat view for this booking
     navigate(`/user-dashboard?booking=${bookingId}`);
+  };
+
+  const handleCallProvider = (contactPhone: string) => {
+    if (!contactPhone) {
+      toast({
+        title: "Phone Number Not Available",
+        description: "This provider's phone number is not available.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Open phone app with provider's number
+    window.open(`tel:${contactPhone}`, '_self');
+  };
+
+  const showConfirmationDialog = (bookingId: string, action: string, title: string, description: string) => {
+    setConfirmationDialog({
+      isOpen: true,
+      bookingId,
+      action,
+      title,
+      description
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmationDialog.bookingId || !confirmationDialog.action) return;
+
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: confirmationDialog.action
+        })
+        .eq('id', confirmationDialog.bookingId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      setBookings(prevBookings => 
+        prevBookings.map(booking => 
+          booking.id === confirmationDialog.bookingId 
+            ? { ...booking, status: confirmationDialog.action }
+            : booking
+        )
+      );
+
+      toast({
+        title: "Booking Updated",
+        description: `Booking has been ${confirmationDialog.action}.`,
+      });
+    } catch (error: any) {
+      console.error('Error updating booking:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update booking.",
+        variant: "destructive"
+      });
+    } finally {
+      setConfirmationDialog({
+        isOpen: false,
+        bookingId: null,
+        action: null,
+        title: '',
+        description: ''
+      });
+    }
   };
 
   if (isLoading) {
@@ -564,8 +764,21 @@ const UserDashboard = () => {
                                   className="ml-1"
                                 />
                               </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleCallProvider(booking.contact_phone)}
+                              >
+                                <Phone className="w-4 h-4 mr-1" />
+                                Call
+                              </Button>
                               {booking.status === 'pending' && (
-                                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => showConfirmationDialog(booking.id, 'cancelled', 'Cancel Booking', 'Are you sure you want to cancel this booking? This action cannot be undone.')}
+                                >
                                   <X className="w-4 h-4 mr-1" />
                                   Cancel
                                 </Button>
@@ -662,6 +875,74 @@ const UserDashboard = () => {
           bookingId={showChatForBooking}
           currentUserId={userInfo.id}
           currentUserType="user"
+        />
+      )}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmationDialog.isOpen} onOpenChange={(open) => {
+        if (!open) {
+          setConfirmationDialog({
+            isOpen: false,
+            bookingId: null,
+            action: null,
+            title: '',
+            description: ''
+          });
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmationDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmationDialog.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAction}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Review Modal */}
+      {showReviewModal && userInfo && (
+        <ReviewModal
+          isOpen={showReviewModal.isOpen}
+          onClose={() => setShowReviewModal(null)}
+          bookingId={showReviewModal.bookingId}
+          providerId={showReviewModal.providerId}
+          providerName={showReviewModal.providerName}
+          userId={userInfo.id}
+          onReviewSubmitted={() => {
+            // Refresh bookings to update the review status
+            fetchBookings().then(() => {
+              console.log('✅ [USER_DASHBOARD] Bookings refreshed after review submission');
+              
+              // Also refresh the provider data to update rating and review count
+              // This ensures the provider profile shows the correct data
+              const refreshProviderData = async () => {
+                try {
+                  const { data: providerData, error } = await supabase
+                    .from('providers')
+                    .select('rating, reviews_count')
+                    .eq('id', showReviewModal.providerId)
+                    .single();
+                  
+                  if (!error && providerData) {
+                    console.log('✅ [USER_DASHBOARD] Provider data refreshed:', providerData);
+                  }
+                } catch (error) {
+                  console.error('❌ [USER_DASHBOARD] Error refreshing provider data:', error);
+                }
+              };
+              
+              refreshProviderData();
+            }).catch((error) => {
+              console.error('❌ [USER_DASHBOARD] Error refreshing bookings after review:', error);
+            });
+          }}
         />
       )}
     </div>

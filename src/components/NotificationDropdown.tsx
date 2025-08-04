@@ -7,13 +7,19 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface Notification {
   id: string;
-  chat_room_id: string;
-  booking_id: string;
-  sender_name: string;
-  content: string;
+  chat_room_id?: string;
+  booking_id?: string;
+  sender_name?: string;
+  content?: string;
   created_at: string;
   is_read: boolean;
-  unread_count: number; // Number of unread messages in this chat room
+  unread_count?: number; // Number of unread messages in this chat room
+  // For booking notifications
+  notification_type?: string;
+  title?: string;
+  message?: string;
+  request_id?: string;
+  type: 'chat' | 'booking'; // To distinguish between chat and booking notifications
 }
 
 interface NotificationDropdownProps {
@@ -35,6 +41,9 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
       try {
         console.log('🔔 [NOTIFICATIONS] Fetching notifications for:', { currentUserId, currentUserType });
         
+        const allNotifications: Notification[] = [];
+        
+        // 1. Fetch chat notifications
         // Get all bookings for this user/provider
         let bookingsQuery;
         if (currentUserType === 'user') {
@@ -99,7 +108,7 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
               console.log('🔔 [NOTIFICATIONS] Grouped messages by chat room:', groupedMessages);
 
               // Create one notification per chat room
-              const notificationsWithNames = await Promise.all(
+              const chatNotifications = await Promise.all(
                 Object.entries(groupedMessages).map(async ([chatRoomId, roomMessages]) => {
                   const latestMessage = roomMessages[0]; // Messages are ordered by created_at desc
                   
@@ -125,24 +134,68 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                   const chatRoom = chatRooms.find(room => room.id === chatRoomId);
                   
                   return {
-                    id: `${chatRoomId}-${latestMessage.id}`, // Unique ID for the notification
+                    id: `chat-${chatRoomId}-${latestMessage.id}`, // Unique ID for the notification
                     chat_room_id: chatRoomId,
                     booking_id: chatRoom?.booking_id || '',
                     sender_name: senderName,
                     content: latestMessage.content,
                     created_at: latestMessage.created_at,
                     is_read: false,
-                    unread_count: roomMessages.length
+                    unread_count: roomMessages.length,
+                    type: 'chat' as const
                   };
                 })
               );
 
-              console.log('🔔 [NOTIFICATIONS] Processed notifications:', notificationsWithNames);
-              setNotifications(notificationsWithNames);
-              setUnreadCount(notificationsWithNames.length);
+              allNotifications.push(...chatNotifications);
             }
           }
         }
+
+        // 2. Fetch booking notifications from user_notifications table
+        if (currentUserType === 'user') {
+          console.log('🔔 [NOTIFICATIONS] Fetching booking notifications for user:', currentUserId);
+          
+          const { data: bookingNotifications, error: bookingError } = await supabase
+            .from('user_notifications')
+            .select('*')
+            .eq('user_id', currentUserId)
+            .not('notification_type', 'is', null) // Only get notifications with notification_type
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+          if (bookingError) {
+            console.error('❌ [NOTIFICATIONS] Error fetching booking notifications:', bookingError);
+          } else if (bookingNotifications) {
+            console.log('🔔 [NOTIFICATIONS] Found booking notifications:', bookingNotifications);
+            
+            const formattedBookingNotifications = bookingNotifications.map(notification => ({
+              id: `booking-${notification.id}`,
+              title: notification.title,
+              message: notification.message,
+              notification_type: notification.notification_type,
+              created_at: notification.created_at,
+              is_read: notification.is_read,
+              type: 'booking' as const
+            }));
+
+            console.log('🔔 [NOTIFICATIONS] Formatted booking notifications:', formattedBookingNotifications);
+            allNotifications.push(...formattedBookingNotifications);
+          } else {
+            console.log('🔔 [NOTIFICATIONS] No booking notifications found for user:', currentUserId);
+          }
+        }
+
+        // Sort all notifications by created_at (newest first)
+        allNotifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        console.log('🔔 [NOTIFICATIONS] All processed notifications:', allNotifications);
+        setNotifications(allNotifications);
+        setUnreadCount(allNotifications.filter(n => !n.is_read).length);
+        
+        // Debug: Log the final state
+        console.log('🔔 [NOTIFICATIONS] Final notification count:', allNotifications.length);
+        console.log('🔔 [NOTIFICATIONS] Final unread count:', allNotifications.filter(n => !n.is_read).length);
       } catch (error) {
         console.error('❌ [NOTIFICATIONS] Error fetching notifications:', error);
       }
@@ -228,21 +281,23 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                     ...updatedNotifications[existingNotificationIndex],
                     content: newMessage.content,
                     created_at: newMessage.created_at,
-                    unread_count: updatedNotifications[existingNotificationIndex].unread_count + 1
+                    unread_count: (updatedNotifications[existingNotificationIndex].unread_count || 0) + 1,
+                    type: 'chat' as const
                   };
                   console.log('🔔 [NOTIFICATIONS] Updated existing notification for chat room:', newMessage.chat_room_id);
                   return updatedNotifications;
                 } else {
                   // Create new notification for this chat room
                   const newNotification: Notification = {
-                    id: `${newMessage.chat_room_id}-${newMessage.id}`,
+                    id: `chat-${newMessage.chat_room_id}-${newMessage.id}`,
                     chat_room_id: newMessage.chat_room_id,
                     booking_id: chatRoom.booking_id,
                     sender_name: senderName,
                     content: newMessage.content,
                     created_at: newMessage.created_at,
                     is_read: false,
-                    unread_count: 1
+                    unread_count: 1,
+                    type: 'chat' as const
                   };
 
                   console.log('🔔 [NOTIFICATIONS] Adding new notification for chat room:', newMessage.chat_room_id);
@@ -255,6 +310,38 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                 return existingNotification ? prev : prev + 1;
               });
             }
+          }
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_notifications',
+          filter: `user_id=eq.${currentUserId}`
+        },
+        (payload) => {
+          console.log('🔔 [NOTIFICATIONS] New booking notification received:', payload);
+          const newNotification = payload.new as any;
+          
+          if (newNotification.notification_type) {
+            console.log('🔔 [NOTIFICATIONS] Processing booking notification:', newNotification);
+            
+            const bookingNotification: Notification = {
+              id: `booking-${newNotification.id}`,
+              title: newNotification.title,
+              message: newNotification.message,
+              notification_type: newNotification.notification_type,
+              created_at: newNotification.created_at,
+              is_read: newNotification.is_read,
+              type: 'booking' as const
+            };
+
+            console.log('🔔 [NOTIFICATIONS] Adding booking notification to state:', bookingNotification);
+            setNotifications(prev => [bookingNotification, ...prev.slice(0, 4)]);
+            setUnreadCount(prev => prev + 1);
+          } else {
+            console.log('🔔 [NOTIFICATIONS] Ignoring notification without notification_type:', newNotification);
           }
         }
       )
@@ -281,29 +368,52 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
     try {
       console.log('🔔 [NOTIFICATIONS] Marking notification as read:', notificationId);
       
-      // Find the notification to get the chat room ID
+      // Find the notification to get the details
       const notification = notifications.find(n => n.id === notificationId);
       if (!notification) {
         console.error('❌ [NOTIFICATIONS] Notification not found:', notificationId);
         return;
       }
 
-      // Mark all unread messages in this chat room as read
-      const { error } = await supabase
-        .from('chat_messages')
-        .update({ is_read: true })
-        .eq('chat_room_id', notification.chat_room_id)
-        .eq('is_read', false)
-        .neq('sender_id', currentUserId);
+      if (notification.type === 'chat' && notification.chat_room_id) {
+        // Mark all unread messages in this chat room as read
+        const { error } = await supabase
+          .from('chat_messages')
+          .update({ is_read: true })
+          .eq('chat_room_id', notification.chat_room_id)
+          .eq('is_read', false)
+          .neq('sender_id', currentUserId);
 
-      if (error) {
-        console.error('❌ [NOTIFICATIONS] Error marking messages as read:', error);
-        return;
+        if (error) {
+          console.error('❌ [NOTIFICATIONS] Error marking messages as read:', error);
+          return;
+        }
+        
+        console.log('✅ [NOTIFICATIONS] Successfully marked all messages in chat room as read');
+      } else if (notification.type === 'booking') {
+        // Mark booking notification as read
+        const bookingNotificationId = notificationId.replace('booking-', '');
+        const { error } = await supabase
+          .from('user_notifications')
+          .update({ is_read: true })
+          .eq('id', bookingNotificationId);
+
+        if (error) {
+          console.error('❌ [NOTIFICATIONS] Error marking booking notification as read:', error);
+          return;
+        }
+        
+        console.log('✅ [NOTIFICATIONS] Successfully marked booking notification as read');
       }
       
-      console.log('✅ [NOTIFICATIONS] Successfully marked all messages in chat room as read');
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
       setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      // Dispatch a custom event to notify other components
+      console.log('🔔 [NOTIFICATIONS] Dispatching notifications-updated event for:', currentUserId, currentUserType);
+      window.dispatchEvent(new CustomEvent('notifications-updated', {
+        detail: { userId: currentUserId, userType: currentUserType }
+      }));
     } catch (error) {
       console.error('❌ [NOTIFICATIONS] Error marking notification as read:', error);
     }
@@ -316,8 +426,12 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
     try {
       console.log('🔔 [NOTIFICATIONS] Marking all notifications as read');
       
+      // Separate chat and booking notifications
+      const chatNotifications = notifications.filter(n => n.type === 'chat');
+      const bookingNotifications = notifications.filter(n => n.type === 'booking');
+      
       // Mark all unread messages from all chat rooms as read
-      const chatRoomIds = notifications.map(n => n.chat_room_id);
+      const chatRoomIds = chatNotifications.map(n => n.chat_room_id).filter(Boolean);
       
       if (chatRoomIds.length > 0) {
         await supabase
@@ -328,8 +442,23 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
           .neq('sender_id', currentUserId);
       }
       
+      // Mark all booking notifications as read
+      if (bookingNotifications.length > 0 && currentUserType === 'user') {
+        const bookingNotificationIds = bookingNotifications.map(n => n.id.replace('booking-', ''));
+        await supabase
+          .from('user_notifications')
+          .update({ is_read: true })
+          .in('id', bookingNotificationIds);
+      }
+      
       setNotifications([]);
       setUnreadCount(0);
+      
+      // Dispatch a custom event to notify other components
+      console.log('🔔 [NOTIFICATIONS] Dispatching notifications-updated event for markAllAsRead:', currentUserId, currentUserType);
+      window.dispatchEvent(new CustomEvent('notifications-updated', {
+        detail: { userId: currentUserId, userType: currentUserType }
+      }));
     } catch (error) {
       console.error('❌ [NOTIFICATIONS] Error marking all notifications as read:', error);
     }
@@ -338,7 +467,7 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
   const handleNotificationClick = (notification: Notification) => {
     console.log('🔔 [NOTIFICATIONS] Notification clicked:', notification);
     
-    if (onOpenChat && notification.booking_id) {
+    if (notification.type === 'chat' && onOpenChat && notification.booking_id) {
       console.log('🔔 [NOTIFICATIONS] Opening chat for booking:', notification.booking_id);
       
       // Mark this specific message as read
@@ -347,8 +476,14 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
       // Open the chat
       onOpenChat(notification.booking_id);
       setIsOpen(false);
+    } else if (notification.type === 'booking') {
+      console.log('🔔 [NOTIFICATIONS] Booking notification clicked:', notification.title);
+      
+      // Mark this booking notification as read
+      markAsRead(notification.id);
+      setIsOpen(false);
     } else {
-      console.error('❌ [NOTIFICATIONS] onOpenChat not provided or booking_id missing');
+      console.error('❌ [NOTIFICATIONS] onOpenChat not provided or booking_id missing for chat notification');
     }
   };
 
@@ -418,19 +553,26 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                     animate={{ opacity: 1, x: 0 }}
                     className="p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => handleNotificationClick(notification)}
-                    title="Click to open chat"
+                    title={notification.type === 'chat' ? "Click to open chat" : "Click to mark as read"}
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                        <MessageSquare className="w-4 h-4 text-primary" />
+                        {notification.type === 'chat' ? (
+                          <MessageSquare className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Bell className="w-4 h-4 text-primary" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm truncate">
-                              {notification.sender_name}
+                              {notification.type === 'chat' 
+                                ? notification.sender_name 
+                                : notification.title
+                              }
                             </p>
-                            {notification.unread_count > 1 && (
+                            {notification.type === 'chat' && notification.unread_count > 1 && (
                               <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-600">
                                 {notification.unread_count}
                               </Badge>
@@ -441,7 +583,10 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                           </p>
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
-                          {notification.content}
+                          {notification.type === 'chat' 
+                            ? notification.content 
+                            : notification.message
+                          }
                         </p>
                       </div>
                     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Bell } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface NotificationBadgeProps {
   currentUserId: string;
@@ -10,190 +11,31 @@ interface NotificationBadgeProps {
 }
 
 const NotificationBadge = ({ currentUserId, currentUserType, className = "" }: NotificationBadgeProps) => {
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount, lastUpdated } = useNotifications(currentUserId, currentUserType);
   const [hasNewMessages, setHasNewMessages] = useState(false);
 
-  // Fetch initial unread count
+  // Debug logging
   useEffect(() => {
-    if (!currentUserId) return;
+    console.log(`🔔 [NotificationBadge] ${currentUserType} ${currentUserId}: unreadCount = ${unreadCount}, lastUpdated = ${lastUpdated}`);
+  }, [unreadCount, lastUpdated, currentUserId, currentUserType]);
 
-    const fetchUnreadCount = async () => {
-      try {
-        // Get all bookings for this user/provider
-        let bookingsQuery;
-        if (currentUserType === 'user') {
-          bookingsQuery = supabase
-            .from('bookings')
-            .select('id')
-            .eq('user_id', currentUserId);
-        } else {
-          bookingsQuery = supabase
-            .from('bookings')
-            .select('id')
-            .eq('provider_id', currentUserId);
-        }
+  // Update hasNewMessages when unreadCount changes
+  useEffect(() => {
+    setHasNewMessages(unreadCount > 0);
+  }, [unreadCount]);
 
-        const { data: bookings } = await bookingsQuery;
-
-        if (bookings && bookings.length > 0) {
-          const bookingIds = bookings.map(booking => booking.id);
-          
-          // Get chat rooms for these bookings
-          const { data: chatRooms } = await supabase
-            .from('chat_rooms')
-            .select('id')
-            .in('booking_id', bookingIds);
-
-          if (chatRooms && chatRooms.length > 0) {
-            const roomIds = chatRooms.map(room => room.id);
-            
-            // Count unread messages
-            const { data: unreadMessages } = await supabase
-              .from('chat_messages')
-              .select('id')
-              .in('chat_room_id', roomIds)
-              .eq('is_read', false)
-              .neq('sender_id', currentUserId);
-
-                      const count = unreadMessages?.length || 0;
-          setUnreadCount(count);
-          setHasNewMessages(count > 0);
-          console.log(`NotificationBadge: Found ${count} unread messages for ${currentUserType} ${currentUserId}`);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching unread count:', error);
+  // Add visual feedback for new messages
+  useEffect(() => {
+    if (hasNewMessages) {
+      const badge = document.getElementById('notification-badge');
+      if (badge) {
+        badge.classList.add('animate-pulse');
+        setTimeout(() => {
+          badge.classList.remove('animate-pulse');
+        }, 2000);
       }
-    };
-
-    fetchUnreadCount();
-  }, [currentUserId, currentUserType]);
-
-  // Real-time subscription for new messages
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    const subscription = supabase
-      .channel(`notifications_${currentUserId}`)
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'chat_messages',
-          filter: `sender_id=neq.${currentUserId}`
-        },
-        async (payload) => {
-          const newMessage = payload.new as any;
-          
-          // Check if this message is for this user by checking the booking
-          const { data: chatRoom } = await supabase
-            .from('chat_rooms')
-            .select('booking_id')
-            .eq('id', newMessage.chat_room_id)
-            .single();
-
-          if (chatRoom) {
-            // Check if this booking belongs to the current user
-            let bookingQuery;
-            if (currentUserType === 'user') {
-              bookingQuery = supabase
-                .from('bookings')
-                .select('id')
-                .eq('id', chatRoom.booking_id)
-                .eq('user_id', currentUserId);
-            } else {
-              bookingQuery = supabase
-                .from('bookings')
-                .select('id')
-                .eq('id', chatRoom.booking_id)
-                .eq('provider_id', currentUserId);
-            }
-
-            const { data: booking } = await bookingQuery;
-
-            if (booking) {
-              setUnreadCount(prev => prev + 1);
-              setHasNewMessages(true);
-              
-              // Add visual feedback
-              const badge = document.getElementById('notification-badge');
-              if (badge) {
-                badge.classList.add('animate-pulse');
-                setTimeout(() => {
-                  badge.classList.remove('animate-pulse');
-                }, 2000);
-              }
-            }
-          }
-        }
-      )
-      .on('postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `sender_id=neq.${currentUserId}`
-        },
-        async (payload) => {
-          const updatedMessage = payload.new as any;
-          
-          // If message was marked as read, update count
-          if (updatedMessage.is_read) {
-            setUnreadCount(prev => Math.max(0, prev - 1));
-            if (unreadCount <= 1) {
-              setHasNewMessages(false);
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [currentUserId, currentUserType, unreadCount]);
-
-  // Refetch unread count when component mounts or user changes
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    const fetchUnreadCount = async () => {
-      try {
-        // Get all chat rooms for this user
-        const { data: chatRooms } = await supabase
-          .from('chat_rooms')
-          .select('id')
-          .eq(currentUserType === 'user' ? 'user_id' : 'provider_id', currentUserId);
-
-        if (chatRooms && chatRooms.length > 0) {
-          const roomIds = chatRooms.map(room => room.id);
-          
-          // Count unread messages
-          const { data: unreadMessages } = await supabase
-            .from('chat_messages')
-            .select('id')
-            .in('chat_room_id', roomIds)
-            .eq('is_read', false)
-            .neq('sender_id', currentUserId);
-
-          setUnreadCount(unreadMessages?.length || 0);
-          setHasNewMessages((unreadMessages?.length || 0) > 0);
-        }
-      } catch (error) {
-        console.error('Error fetching unread count:', error);
-      }
-    };
-
-    // Fetch immediately
-    fetchUnreadCount();
-
-    // Set up interval to refetch every 5 seconds
-    const interval = setInterval(fetchUnreadCount, 5000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [currentUserId, currentUserType]);
+    }
+  }, [hasNewMessages, lastUpdated]);
 
   return (
     <div className={`relative ${className}`}>

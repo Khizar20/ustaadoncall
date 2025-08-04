@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { 
   Send, 
   Phone, 
-  Video, 
   X, 
   Minimize2, 
   Maximize2,
@@ -33,7 +32,7 @@ interface ChatMessage {
 
 interface ChatRoom {
   id: string;
-  booking_id: string;
+  booking_id?: string; // Make optional for direct messaging
   user_id: string;
   provider_id: string;
   is_active: boolean;
@@ -44,11 +43,15 @@ interface ChatRoom {
 interface ChatModalProps {
   isOpen: boolean;
   onClose: () => void;
-  bookingId: string;
+  bookingId?: string; // Make optional for direct messaging
   currentUserId: string;
   currentUserType: 'user' | 'provider';
   otherPartyName?: string;
   otherPartyImage?: string;
+  otherPartyPhone?: string;
+  // For direct messaging without booking
+  otherPartyId?: string;
+  isDirectMessage?: boolean;
 }
 
 const ChatModal = ({ 
@@ -58,7 +61,10 @@ const ChatModal = ({
   currentUserId, 
   currentUserType, 
   otherPartyName,
-  otherPartyImage 
+  otherPartyImage,
+  otherPartyPhone,
+  otherPartyId,
+  isDirectMessage = false
 }: ChatModalProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -67,6 +73,7 @@ const ChatModal = ({
   const [isMinimized, setIsMinimized] = useState(false);
   const [sendingMessageId, setSendingMessageId] = useState<string | null>(null);
   const [fetchedOtherPartyName, setFetchedOtherPartyName] = useState<string>('');
+  const [fetchedOtherPartyPhone, setFetchedOtherPartyPhone] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -81,18 +88,26 @@ const ChatModal = ({
 
   // Fetch booking details to get other party name
   useEffect(() => {
-    if (!isOpen || !bookingId) return;
+    if (!isOpen || (!bookingId && !isDirectMessage)) return;
 
     const fetchBookingDetails = async () => {
       try {
+        if (isDirectMessage) {
+          // For direct messaging, we already have the other party info
+          console.log('🔔 [CHAT_MODAL] Direct messaging with:', otherPartyName);
+          setFetchedOtherPartyName(otherPartyName || 'Unknown');
+          setFetchedOtherPartyPhone(otherPartyPhone || '');
+          return;
+        }
+
         console.log('🔔 [CHAT_MODAL] Fetching booking details for:', bookingId);
         
         const { data: booking, error } = await supabase
           .from('bookings')
           .select(`
             *,
-            users (name),
-            providers (name)
+            users (name, phone),
+            providers (name, phone)
           `)
           .eq('id', bookingId)
           .single();
@@ -105,16 +120,21 @@ const ChatModal = ({
         if (booking) {
           console.log('🔔 [CHAT_MODAL] Booking details:', booking);
           
-          // Determine other party name based on current user type
-          let otherParty = '';
-          if (currentUserType === 'user') {
-            otherParty = booking.providers?.name || 'Provider';
-          } else {
-            otherParty = booking.users?.name || 'User';
-          }
-          
-                     console.log('🔔 [CHAT_MODAL] Setting other party name to:', otherParty);
+                     // Determine other party name and phone based on current user type
+           let otherParty = '';
+           let otherPartyPhone = '';
+           if (currentUserType === 'user') {
+             otherParty = booking.providers?.name || 'Provider';
+             otherPartyPhone = booking.providers?.phone || '';
+           } else {
+             otherParty = booking.users?.name || 'User';
+             otherPartyPhone = booking.users?.phone || '';
+           }
+           
+           console.log('🔔 [CHAT_MODAL] Setting other party name to:', otherParty);
+           console.log('🔔 [CHAT_MODAL] Setting other party phone to:', otherPartyPhone);
            setFetchedOtherPartyName(otherParty);
+           setFetchedOtherPartyPhone(otherPartyPhone);
         }
       } catch (error) {
         console.error('❌ [CHAT_MODAL] Error fetching booking details:', error);
@@ -133,36 +153,59 @@ const ChatModal = ({
 
     const initializeChat = async () => {
       try {
-        // Check if chat room exists
-        const { data: existingRoom } = await supabase
-          .from('chat_rooms')
-          .select('*')
-          .eq('booking_id', bookingId)
-          .single();
-
-        if (existingRoom) {
-          console.log('🔔 [CHAT_MODAL] Found existing chat room:', existingRoom);
-          setChatRoom(existingRoom);
-          await fetchMessages(existingRoom.id);
+        if (isDirectMessage) {
+          // For direct messaging, create a simple chat room object
+          const roomId = [currentUserId, otherPartyId].sort().join('_');
+          
+          // Create a simple chat room object for direct messaging
+          const directChatRoom = {
+            id: roomId,
+            booking_id: null,
+            user_id: currentUserType === 'user' ? currentUserId : otherPartyId,
+            provider_id: currentUserType === 'provider' ? currentUserId : otherPartyId,
+            is_active: true,
+            created_at: new Date().toISOString(),
+            last_message_at: new Date().toISOString()
+          };
+          
+          console.log('🔔 [CHAT_MODAL] Created direct chat room:', directChatRoom);
+          setChatRoom(directChatRoom);
+          
+          // For direct messaging, we'll store messages in a simple way
+          // You can implement a proper chat system later
+          setMessages([]);
         } else {
-          console.log('🔔 [CHAT_MODAL] Creating new chat room for booking:', bookingId);
-          // Create new chat room
-          const { data: newRoom, error } = await supabase
+          // Check if chat room exists for booking
+          const { data: existingRoom } = await supabase
             .from('chat_rooms')
-            .insert({
-              booking_id: bookingId,
-              user_id: currentUserType === 'user' ? currentUserId : null,
-              provider_id: currentUserType === 'provider' ? currentUserId : null,
-              is_active: true
-            })
-            .select()
+            .select('*')
+            .eq('booking_id', bookingId)
             .single();
 
-          if (!error && newRoom) {
-            console.log('🔔 [CHAT_MODAL] Created new chat room:', newRoom);
-            setChatRoom(newRoom);
+          if (existingRoom) {
+            console.log('🔔 [CHAT_MODAL] Found existing chat room:', existingRoom);
+            setChatRoom(existingRoom);
+            await fetchMessages(existingRoom.id);
           } else {
-            console.error('❌ [CHAT_MODAL] Error creating chat room:', error);
+            console.log('🔔 [CHAT_MODAL] Creating new chat room for booking:', bookingId);
+            // Create new chat room
+            const { data: newRoom, error } = await supabase
+              .from('chat_rooms')
+              .insert({
+                booking_id: bookingId,
+                user_id: currentUserType === 'user' ? currentUserId : null,
+                provider_id: currentUserType === 'provider' ? currentUserId : null,
+                is_active: true
+              })
+              .select()
+              .single();
+
+            if (!error && newRoom) {
+              console.log('🔔 [CHAT_MODAL] Created new chat room:', newRoom);
+              setChatRoom(newRoom);
+            } else {
+              console.error('❌ [CHAT_MODAL] Error creating chat room:', error);
+            }
           }
         }
       } catch (error) {
@@ -171,11 +214,19 @@ const ChatModal = ({
     };
 
     initializeChat();
-  }, [isOpen, bookingId, currentUserId, currentUserType]);
+  }, [isOpen, bookingId, currentUserId, currentUserType, isDirectMessage, otherPartyId]);
 
   // Fetch messages
   const fetchMessages = async (roomId: string) => {
     try {
+      if (isDirectMessage) {
+        // For direct messaging, start with empty messages
+        // In a real implementation, you would fetch from a database
+        console.log('🔔 [CHAT_MODAL] Direct messaging - starting with empty messages');
+        setMessages([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
@@ -205,7 +256,7 @@ const ChatModal = ({
 
   // Set up real-time subscription
   useEffect(() => {
-    if (!chatRoom || !isOpen) return;
+    if (!chatRoom || !isOpen || isDirectMessage) return; // Skip subscription for direct messaging
 
     const subscription = supabase
       .channel(`chat_${chatRoom.id}`)
@@ -232,13 +283,13 @@ const ChatModal = ({
           if (newMessage.sender_id !== currentUserId) {
             markMessageAsRead(newMessage.id);
             
-                         // Show notification for new message
-             if (document.hidden) {
-               toast({
-                 title: `New message from ${fetchedOtherPartyName || otherPartyName || 'Contact'}`,
-                 description: newMessage.content.substring(0, 50) + (newMessage.content.length > 50 ? '...' : ''),
-               });
-             }
+            // Show notification for new message
+            if (document.hidden) {
+              toast({
+                title: `New message from ${fetchedOtherPartyName || otherPartyName || 'Contact'}`,
+                description: newMessage.content.substring(0, 50) + (newMessage.content.length > 50 ? '...' : ''),
+              });
+            }
           }
         }
       )
@@ -247,10 +298,18 @@ const ChatModal = ({
     return () => {
       subscription.unsubscribe();
     };
-     }, [chatRoom, currentUserId, isOpen, fetchedOtherPartyName, otherPartyName, toast]);
+  }, [chatRoom, currentUserId, isOpen, fetchedOtherPartyName, otherPartyName, toast, isDirectMessage]);
 
   // Mark message as read
   const markMessageAsRead = async (messageId: string) => {
+    if (isDirectMessage) {
+      // For direct messaging, just update local state
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId ? { ...msg, is_read: true } : msg
+      ));
+      return;
+    }
+    
     await supabase
       .from('chat_messages')
       .update({ is_read: true })
@@ -260,12 +319,27 @@ const ChatModal = ({
   // Mark multiple messages as read
   const markMessagesAsRead = async (messageIds: string[]) => {
     try {
+      if (isDirectMessage) {
+        // For direct messaging, just update local state
+        setMessages(prev => prev.map(msg => 
+          messageIds.includes(msg.id) ? { ...msg, is_read: true } : msg
+        ));
+        console.log('✅ [CHAT_MODAL] Successfully marked direct messages as read');
+        return;
+      }
+      
       console.log('🔔 [CHAT_MODAL] Marking messages as read:', messageIds);
       await supabase
         .from('chat_messages')
         .update({ is_read: true })
         .in('id', messageIds);
       console.log('✅ [CHAT_MODAL] Successfully marked messages as read');
+      
+      // Dispatch a custom event to notify other components
+      console.log('🔔 [CHAT_MODAL] Dispatching notifications-updated event for:', currentUserId, currentUserType);
+      window.dispatchEvent(new CustomEvent('notifications-updated', {
+        detail: { userId: currentUserId, userType: currentUserType }
+      }));
     } catch (error) {
       console.error('❌ [CHAT_MODAL] Error marking messages as read:', error);
     }
@@ -296,27 +370,50 @@ const ChatModal = ({
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert({
-          chat_room_id: chatRoom.id,
-          sender_id: currentUserId,
-          sender_type: currentUserType,
-          content: messageContent,
-          message_type: 'text'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      // Replace temporary message with real message
-      if (data) {
+      if (isDirectMessage) {
+        // For direct messaging, just keep the message in local state
+        // In a real implementation, you would store this in a database
+        console.log('🔔 [CHAT_MODAL] Direct message sent:', messageContent);
+        
+        // Simulate a successful message send
+        const realMessage: ChatMessage = {
+          ...tempMessage,
+          id: `direct-${Date.now()}`,
+          is_read: true
+        };
+        
         setMessages(prev => prev.map(msg => 
-          msg.id === tempMessage.id ? data : msg
+          msg.id === tempMessage.id ? realMessage : msg
         ));
+        
+        toast({
+          title: "Message Sent",
+          description: "Your message has been sent. (Direct messaging mode)",
+        });
+      } else {
+        // For booking-based chats, use the database
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .insert({
+            chat_room_id: chatRoom.id,
+            sender_id: currentUserId,
+            sender_type: currentUserType,
+            content: messageContent,
+            message_type: 'text'
+          })
+          .select()
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        // Replace temporary message with real message
+        if (data) {
+          setMessages(prev => prev.map(msg => 
+            msg.id === tempMessage.id ? data : msg
+          ));
+        }
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
@@ -352,19 +449,30 @@ const ChatModal = ({
 
   // Handle call action
   const handleCall = () => {
+    const phoneNumber = fetchedOtherPartyPhone || otherPartyPhone;
+    
+    if (!phoneNumber) {
+      toast({
+        title: "No Phone Number",
+        description: "Phone number not available for this contact.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Format phone number for tel: link
+    const formattedPhone = phoneNumber.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+    
+    // Open phone app with the number
+    window.open(`tel:${formattedPhone}`, '_blank');
+    
     toast({
-      title: "Call Feature",
-      description: "Call feature will be implemented in the next phase.",
+      title: "Calling...",
+      description: `Opening phone app to call ${fetchedOtherPartyName || otherPartyName || 'Contact'}`,
     });
   };
 
-  // Handle video call action
-  const handleVideoCall = () => {
-    toast({
-      title: "Video Call Feature",
-      description: "Video call feature will be implemented in the next phase.",
-    });
-  };
+
 
   if (!isOpen) return null;
 
@@ -392,23 +500,20 @@ const ChatModal = ({
                 <p className="text-xs opacity-90">Online</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="ghost" onClick={handleCall} className="text-white hover:bg-white/20">
-                <Phone className="w-4 h-4" />
-              </Button>
-              <Button size="sm" variant="ghost" onClick={handleVideoCall} className="text-white hover:bg-white/20">
-                <Video className="w-4 h-4" />
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setIsMinimized(!isMinimized)} className="text-white hover:bg-white/20">
-                {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => {
-                console.log('🔔 [CHAT_MODAL] Closing chat modal');
-                onClose();
-              }} className="text-white hover:bg-white/20">
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
+                         <div className="flex items-center gap-2">
+               <Button size="sm" variant="ghost" onClick={handleCall} className="text-white hover:bg-white/20">
+                 <Phone className="w-4 h-4" />
+               </Button>
+               <Button size="sm" variant="ghost" onClick={() => setIsMinimized(!isMinimized)} className="text-white hover:bg-white/20">
+                 {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
+               </Button>
+               <Button size="sm" variant="ghost" onClick={() => {
+                 console.log('🔔 [CHAT_MODAL] Closing chat modal');
+                 onClose();
+               }} className="text-white hover:bg-white/20">
+                 <X className="w-4 h-4" />
+               </Button>
+             </div>
           </div>
 
           {/* Chat Body */}

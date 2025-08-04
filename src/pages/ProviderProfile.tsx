@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Star, MapPin, Clock, Shield, Phone, Calendar, ChevronLeft, ChevronRight, Loader2, CheckCircle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Navigation } from "@/components/ui/navigation";
 import { Footer } from "@/components/ui/footer";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import ChatModal from "@/components/ChatModal";
+
 import InteractiveGoogleMap from "@/components/InteractiveGoogleMap";
 import MapErrorBoundary from "@/components/MapErrorBoundary";
 import { type Location, type ProviderWithLocation, getUserLocation, calculateDistance } from "@/lib/locationUtils";
@@ -28,6 +28,10 @@ interface Provider {
   created_at: string;
   latitude?: number;
   longitude?: number;
+  phone?: string;
+  users?: {
+    phone?: string;
+  };
 }
 
 interface SelectedJob {
@@ -36,20 +40,35 @@ interface SelectedJob {
   price: number;
 }
 
+interface Review {
+  id: string;
+  booking_id: string;
+  customer_id: string;
+  provider_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  users: {
+    name: string;
+  };
+}
+
 const ProviderProfile = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [provider, setProvider] = useState<Provider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedJobs, setSelectedJobs] = useState<SelectedJob[]>([]);
-  const [showChat, setShowChat] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [hasBooked, setHasBooked] = useState(false);
   const [userLocation, setUserLocation] = useState<Location | null>(null);
   const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
   const [distance, setDistance] = useState<number | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
   const { toast } = useToast();
 
   // Get user location
@@ -88,25 +107,28 @@ const ProviderProfile = () => {
       const user = JSON.parse(userData);
       setCurrentUser(user);
       
-      // Check if user has booked this provider
-      const checkBooking = async () => {
-        if (!user || !provider) return;
-        
-        try {
-          const { data, error } = await supabase
-            .from('bookings')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('provider_id', provider.id)
-            .limit(1);
-          
-          if (!error && data && data.length > 0) {
-            setHasBooked(true);
-          }
-        } catch (error) {
-          console.error('Error checking booking:', error);
-        }
-      };
+             // Check if user has an active booking with this provider
+       const checkBooking = async () => {
+         if (!user || !provider) return;
+         
+         try {
+           const { data, error } = await supabase
+             .from('bookings')
+             .select('id, status')
+             .eq('user_id', user.id)
+             .eq('provider_id', provider.id)
+             .in('status', ['pending', 'confirmed']) // Only consider active bookings
+             .limit(1);
+           
+           if (!error && data && data.length > 0) {
+             setHasBooked(true);
+           } else {
+             setHasBooked(false);
+           }
+         } catch (error) {
+           console.error('Error checking booking:', error);
+         }
+       };
       
       checkBooking();
     }
@@ -121,12 +143,12 @@ const ProviderProfile = () => {
         setIsLoading(true);
         setError(null);
 
-        const { data, error } = await supabase
-          .from('providers')
-          .select('*')
-          .eq('id', id)
-          .eq('is_verified', true)
-          .single();
+                 const { data, error } = await supabase
+           .from('providers')
+           .select('*')
+           .eq('id', id)
+           .eq('is_verified', true)
+           .single();
 
         if (error) {
           throw error;
@@ -147,23 +169,276 @@ const ProviderProfile = () => {
           }
         }
 
-        // Update the data with parsed jobs_pricing
-        const processedData = {
-          ...data,
-          jobs_pricing: parsedJobsPricing
-        };
+                 // Fetch user's phone number from auth.users
+         let userPhone = null;
+         try {
+           const { data: userData, error: userError } = await supabase
+             .from('auth.users')
+             .select('phone')
+             .eq('id', data.user_id)
+             .single();
+           
+           if (!userError && userData) {
+             userPhone = userData.phone;
+           }
+         } catch (error) {
+           console.log('Could not fetch user phone number:', error);
+         }
 
-        setProvider(processedData);
-      } catch (error: any) {
-        console.error('Error fetching provider:', error);
-        setError(error.message || 'Failed to load provider');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+         // Update the data with parsed jobs_pricing and user phone
+         const processedData = {
+           ...data,
+           jobs_pricing: parsedJobsPricing,
+           users: {
+             phone: userPhone
+           }
+         };
+
+         setProvider(processedData);
+         console.log('📊 Provider data loaded:', {
+           rating: data.rating,
+           reviews_count: data.reviews_count,
+           name: data.name
+         });
+       } catch (error: any) {
+         console.error('Error fetching provider:', error);
+         setError(error.message || 'Failed to load provider');
+       } finally {
+         setIsLoading(false);
+       }
+     };
 
     fetchProvider();
   }, [id]);
+
+  // Fetch reviews when provider is loaded
+  useEffect(() => {
+    if (provider) {
+      fetchReviews();
+    }
+  }, [provider]);
+
+  // Real-time subscription for new reviews and provider updates
+  useEffect(() => {
+    if (!provider?.id) return;
+
+    const subscription = supabase
+      .channel(`provider_profile_${provider.id}`)
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'reviews',
+          filter: `provider_id=eq.${provider.id}`
+        },
+        (payload) => {
+          console.log('🔄 New review received for provider:', payload);
+          // Refresh reviews and provider data
+          fetchReviews();
+          // Re-fetch provider data
+          const refetchProvider = async () => {
+            try {
+              const { data, error } = await supabase
+                .from('providers')
+                .select('*')
+                .eq('id', provider.id)
+                .eq('is_verified', true)
+                .single();
+
+              if (!error && data) {
+                let parsedJobsPricing = data.jobs_pricing;
+                if (typeof data.jobs_pricing === 'string') {
+                  try {
+                    parsedJobsPricing = JSON.parse(data.jobs_pricing);
+                  } catch (error) {
+                    console.error('❌ Error parsing jobs_pricing string:', error);
+                    parsedJobsPricing = null;
+                  }
+                }
+
+                // Fetch user's phone number from auth.users
+                let userPhone = null;
+                try {
+                  const { data: userData, error: userError } = await supabase
+                    .from('auth.users')
+                    .select('phone')
+                    .eq('id', data.user_id)
+                    .single();
+                  
+                  if (!userError && userData) {
+                    userPhone = userData.phone;
+                  }
+                } catch (error) {
+                  console.log('Could not fetch user phone number:', error);
+                }
+
+                const processedData = {
+                  ...data,
+                  jobs_pricing: parsedJobsPricing,
+                  users: {
+                    phone: userPhone
+                  }
+                };
+
+                setProvider(processedData);
+              }
+            } catch (error) {
+              console.error('Error refetching provider:', error);
+            }
+          };
+          refetchProvider();
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'providers',
+          filter: `id=eq.${provider.id}`
+        },
+        (payload) => {
+          console.log('🔄 Provider data updated:', payload);
+          // Re-fetch provider data
+          const refetchProvider = async () => {
+            try {
+              const { data, error } = await supabase
+                .from('providers')
+                .select('*')
+                .eq('id', provider.id)
+                .eq('is_verified', true)
+                .single();
+
+              if (!error && data) {
+                let parsedJobsPricing = data.jobs_pricing;
+                if (typeof data.jobs_pricing === 'string') {
+                  try {
+                    parsedJobsPricing = JSON.parse(data.jobs_pricing);
+                  } catch (error) {
+                    console.error('❌ Error parsing jobs_pricing string:', error);
+                    parsedJobsPricing = null;
+                  }
+                }
+
+                // Fetch user's phone number from auth.users
+                let userPhone = null;
+                try {
+                  const { data: userData, error: userError } = await supabase
+                    .from('auth.users')
+                    .select('phone')
+                    .eq('id', data.user_id)
+                    .single();
+                  
+                  if (!userError && userData) {
+                    userPhone = userData.phone;
+                  }
+                } catch (error) {
+                  console.log('Could not fetch user phone number:', error);
+                }
+
+                const processedData = {
+                  ...data,
+                  jobs_pricing: parsedJobsPricing,
+                  users: {
+                    phone: userPhone
+                  }
+                };
+
+                setProvider(processedData);
+              }
+            } catch (error) {
+              console.error('Error refetching provider:', error);
+            }
+          };
+          refetchProvider();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [provider?.id]);
+
+    const fetchReviews = async () => {
+    if (!id) return;
+
+    setIsLoadingReviews(true);
+    try {
+      // First, fetch reviews
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('provider_id', id)
+        .order('created_at', { ascending: false });
+
+      if (reviewsError) {
+        throw reviewsError;
+      }
+
+      // Then, fetch user names for each review
+      const reviewsWithUsers = await Promise.all(
+        (reviewsData || []).map(async (review) => {
+          try {
+            // Try to get user data from public.users table first
+            let { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', review.customer_id)
+              .single();
+
+            // If that fails, try auth.users
+            if (userError) {
+              const { data: authUserData, error: authUserError } = await supabase
+                .from('auth.users')
+                .select('name')
+                .eq('id', review.customer_id)
+                .single();
+
+              if (!authUserError && authUserData) {
+                userData = authUserData;
+                userError = null;
+              }
+            }
+
+            return {
+              ...review,
+              users: {
+                name: userError ? 'Anonymous' : (userData?.name || 'Anonymous')
+              }
+            };
+          } catch (error) {
+            console.error('Error fetching user data for review:', error);
+            return {
+              ...review,
+              users: {
+                name: 'Anonymous'
+              }
+            };
+          }
+        })
+      );
+
+      setReviews(reviewsWithUsers);
+      console.log('📝 Reviews loaded:', reviewsWithUsers.length, 'reviews');
+      reviewsWithUsers.forEach((review, index) => {
+        console.log(`Review ${index + 1}:`, {
+          rating: review.rating,
+          comment: review.comment,
+          userName: review.users?.name,
+          date: review.created_at
+        });
+      });
+    } catch (error: any) {
+      console.error('Error fetching reviews:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load reviews.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingReviews(false);
+    }
+  };
 
   const getServiceCategories = (provider: Provider) => {
     if (typeof provider.service_category === 'string') {
@@ -213,6 +488,34 @@ const ProviderProfile = () => {
   const formatPrice = (price: number) => {
     return `Rs. ${price.toLocaleString()}`;
   };
+
+  const formatReviewDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const handleRedirectToDashboard = () => {
+    if (!currentUser) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to access your dashboard.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Redirect to user dashboard
+    navigate('/user-dashboard');
+    toast({
+      title: "Redirecting to Dashboard",
+      description: "You can chat and call your provider from your bookings section.",
+    });
+  };
+
+
 
   const handleRefreshLocation = async () => {
     try {
@@ -507,6 +810,86 @@ const ProviderProfile = () => {
                 </Card>
               )}
 
+              {/* Reviews Section */}
+              <Card className="p-8 border-border bg-card">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-foreground">Reviews & Ratings</h2>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-5 h-5 ${
+                            star <= (provider.rating || 0)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {provider.rating?.toFixed(1) || '0'} ({provider.reviews_count || 0} reviews)
+                    </span>
+                  </div>
+                </div>
+
+                {isLoadingReviews ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Loading reviews...</span>
+                  </div>
+                ) : reviews.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No reviews yet</h3>
+                    <p className="text-muted-foreground">
+                      Be the first to review this provider's services.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="border border-border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                              <span className="text-primary font-semibold">
+                                {review.users?.name?.charAt(0) || 'A'}
+                              </span>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-foreground">
+                                {review.users?.name || 'Anonymous'}
+                              </h4>
+                              <p className="text-sm text-muted-foreground">
+                                {formatReviewDate(review.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-4 h-4 ${
+                                  star <= review.rating
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <p className="text-foreground leading-relaxed">
+                            "{review.comment}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
               {/* Booking Section */}
               {!hasBooked && (
                 <Card className="p-8 border-border bg-card">
@@ -582,50 +965,61 @@ const ProviderProfile = () => {
               <Card className="p-6 border-border bg-card">
                 <h3 className="text-lg font-semibold text-foreground mb-4">Contact</h3>
                 
-                {hasBooked ? (
-                  <div className="space-y-3">
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => setShowChat(true)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Send Message
-                    </Button>
-                    <Button variant="outline" className="w-full">
-                      <Phone className="h-4 w-4 mr-2" />
-                      Call Provider
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                      <div className="flex items-center gap-3 mb-3">
-                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-medium text-foreground">Send Message</span>
+                <div className="space-y-4">
+                  {hasBooked ? (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={handleRedirectToDashboard}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Chat with Provider
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={handleRedirectToDashboard}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Call Provider
+                      </Button>
+                      <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+                        <p className="text-sm text-primary font-medium">
+                          Click above to access chat and call features in your dashboard
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Text the provider after booking an appointment
-                      </p>
-                    </div>
-                    
-                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Phone className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-medium text-foreground">Call Provider</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
+                        <div className="flex items-center gap-3 mb-3">
+                          <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                          <span className="font-medium text-foreground">Chat with Provider</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Chat with your provider from your user dashboard after booking
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Call the provider after hiring them
-                      </p>
-                    </div>
-                    
-                    <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
-                      <p className="text-sm text-primary font-medium">
-                        Book an appointment to unlock contact features
-                      </p>
-                    </div>
-                  </div>
-                )}
+                      
+                      <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Phone className="h-5 w-5 text-muted-foreground" />
+                          <span className="font-medium text-foreground">Call Provider</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Call your provider from your user dashboard after booking
+                        </p>
+                      </div>
+                      
+                      <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+                        <p className="text-sm text-primary font-medium">
+                          Book an appointment to access contact features in your dashboard
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </Card>
 
               {/* Verification Badge */}
@@ -670,18 +1064,7 @@ const ProviderProfile = () => {
         </div>
       </div>
 
-      {/* Chat Modal */}
-      {showChat && currentUser && (
-        <ChatModal
-          isOpen={showChat}
-          onClose={() => setShowChat(false)}
-          bookingId={provider.id} // Using provider ID as booking ID for now
-          currentUserId={currentUser.id}
-          currentUserType="user"
-          otherPartyName={provider.name}
-          otherPartyImage={provider.profile_image}
-        />
-      )}
+
 
       <Footer />
     </div>
