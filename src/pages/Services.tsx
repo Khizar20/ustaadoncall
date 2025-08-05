@@ -90,7 +90,34 @@ const Services = () => {
         throw error;
       }
 
-      setProviders(data || []);
+      // Add coordinates to providers that don't have them
+      const providersWithCoords = await Promise.all(
+        (data || []).map(async (provider) => {
+          if (provider.latitude && provider.longitude) {
+            return provider;
+          }
+          
+          // Try to geocode the location if coordinates are missing
+          if (provider.location) {
+            try {
+              const geocodedLocation = await geocodeAddress(provider.location);
+              if (geocodedLocation) {
+                return {
+                  ...provider,
+                  latitude: geocodedLocation.latitude,
+                  longitude: geocodedLocation.longitude
+                };
+              }
+            } catch (error) {
+              console.warn(`Failed to geocode location for ${provider.name}:`, error);
+            }
+          }
+          
+          return provider;
+        })
+      );
+
+      setProviders(providersWithCoords);
     } catch (error: any) {
       console.error('Error fetching providers:', error);
       toast({
@@ -274,11 +301,11 @@ const Services = () => {
       <div className="pt-24">
         <div className="container mx-auto px-6 lg:px-8 py-12">
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-8 md:mb-12">
+            <h1 className="text-2xl md:text-4xl font-bold text-foreground mb-3 md:mb-4">
               Find Local Service Providers
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
               Connect with verified professionals in your area for all your service needs
             </p>
           </div>
@@ -295,8 +322,8 @@ const Services = () => {
           )}
 
           {/* Search and Filter Controls */}
-          <div className="mb-8 space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
+          <div className="mb-6 md:mb-8 space-y-3 md:space-y-4">
+            <div className="flex flex-col gap-3 md:gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -308,11 +335,11 @@ const Services = () => {
                 />
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-4 py-2 border border-border rounded-md bg-background text-foreground"
+                  className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
                 >
                   {serviceCategories.map((category) => (
                     <option key={category} value={category}>
@@ -325,7 +352,7 @@ const Services = () => {
                   <select
                     value={searchRadius}
                     onChange={(e) => handleRadiusChange(Number(e.target.value))}
-                    className="px-4 py-2 border border-border rounded-md bg-background text-foreground"
+                    className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
                   >
                     <option value={5}>5km</option>
                     <option value={10}>10km</option>
@@ -342,7 +369,7 @@ const Services = () => {
             <MapErrorBoundary onRetry={handleRefreshLocation}>
               <InteractiveGoogleMap
                 userLocation={userLocation}
-                providers={nearbyProviders}
+                providers={filteredProviders}
                 onRefreshLocation={handleRefreshLocation}
                 isLoading={isLoadingNearby}
                 selectedServiceType={selectedCategory}
@@ -360,81 +387,81 @@ const Services = () => {
 
 
           {/* All Providers Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground">
+          <div className="mb-6 md:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 md:mb-6 gap-2">
+              <h2 className="text-xl md:text-2xl font-bold text-foreground">
                 {locationPermissionGranted ? t("All Providers") : t("Service Provider")}
               </h2>
-              <p className="text-muted-foreground">
+              <p className="text-sm md:text-base text-muted-foreground">
                 {filteredProviders.length} {t("Provider")}{filteredProviders.length !== 1 ? 's' : ''} {t("found")}
               </p>
             </div>
 
             {paginatedProviders.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {paginatedProviders.map((provider) => (
                   <Card
                     key={provider.id}
                     className="group hover:shadow-lg transition-all duration-300 cursor-pointer"
                   >
                     <Link to={`/provider/${provider.id}`}>
-                      <div className="p-6">
-                        <div className="flex items-start gap-4 mb-4">
-                          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <div className="p-4 md:p-6">
+                        <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
+                          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                             {provider.profile_image ? (
                               <img
                                 src={provider.profile_image}
                                 alt={provider.name}
-                                className="w-16 h-16 rounded-full object-cover"
+                                className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover"
                               />
                             ) : (
-                              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-2xl font-bold text-primary">
+                              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                                <span className="text-lg md:text-2xl font-bold text-primary">
                                   {provider.name.charAt(0)}
                                 </span>
                               </div>
                             )}
                           </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-base md:text-lg text-foreground group-hover:text-primary transition-colors truncate">
                               {provider.name}
                             </h3>
-                            <p className="text-primary font-medium">{getServiceCategories(provider).join(', ')}</p>
+                            <p className="text-primary font-medium text-sm md:text-base truncate">{getServiceCategories(provider).join(', ')}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <div className="flex items-center gap-1">
-                                <Star className="h-4 w-4 fill-primary text-primary" />
-                                <span className="text-sm font-medium text-foreground">
-                                  {provider.rating || 0}
+                                <Star className="h-3 w-3 md:h-4 md:w-4 fill-primary text-primary" />
+                                <span className="text-xs md:text-sm font-medium text-foreground">
+                                  {(provider.rating || 0).toFixed(1)}
                                 </span>
                               </div>
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-xs md:text-sm text-muted-foreground">
                                 ({provider.reviews_count || 0} reviews)
                               </span>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="space-y-2 mb-4">
+                        <div className="space-y-2 mb-3 md:mb-4">
                           <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">
+                            <MapPin className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+                            <span className="text-xs md:text-sm text-muted-foreground truncate">
                               {provider.location || "Location not specified"}
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs md:text-sm text-muted-foreground">
                             Experience: {provider.experience || "Not specified"}
                           </p>
-                          <p className="font-semibold text-foreground">
+                          <p className="font-semibold text-foreground text-sm md:text-base">
                             {getStartingPrice(provider)}
                           </p>
                           {provider.bio && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">
+                            <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                               {provider.bio}
                             </p>
                           )}
                         </div>
                         
-                        <Button variant="default" className="w-full">
+                        <Button variant="default" className="w-full text-sm">
                           View Profile
                         </Button>
                       </div>

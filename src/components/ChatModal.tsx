@@ -482,53 +482,53 @@ const ChatModal = ({
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="fixed bottom-4 right-4 z-50"
+        className="fixed bottom-4 right-4 z-50 w-full max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl"
       >
         <div className="bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary to-primary/80 text-white p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                 {otherPartyImage ? (
-                   <img src={otherPartyImage} alt={fetchedOtherPartyName || otherPartyName} className="w-8 h-8 rounded-full" />
-                 ) : (
-                   <span className="text-lg font-semibold">{(fetchedOtherPartyName || otherPartyName || 'U').charAt(0)}</span>
-                 )}
+          <div className="bg-gradient-to-r from-primary to-primary/80 text-white p-3 md:p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/20 flex items-center justify-center">
+                {otherPartyImage ? (
+                  <img src={otherPartyImage} alt={fetchedOtherPartyName || otherPartyName} className="w-6 h-6 md:w-8 md:h-8 rounded-full" />
+                ) : (
+                  <span className="text-sm md:text-lg font-semibold">{(fetchedOtherPartyName || otherPartyName || 'U').charAt(0)}</span>
+                )}
               </div>
               <div>
-                                 <h3 className="font-semibold">{fetchedOtherPartyName || otherPartyName || 'Loading...'}</h3>
+                <h3 className="font-semibold text-sm md:text-base">{fetchedOtherPartyName || otherPartyName || 'Loading...'}</h3>
                 <p className="text-xs opacity-90">Online</p>
               </div>
             </div>
-                         <div className="flex items-center gap-2">
-               <Button size="sm" variant="ghost" onClick={handleCall} className="text-white hover:bg-white/20">
-                 <Phone className="w-4 h-4" />
-               </Button>
-               <Button size="sm" variant="ghost" onClick={() => setIsMinimized(!isMinimized)} className="text-white hover:bg-white/20">
-                 {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
-               </Button>
-               <Button size="sm" variant="ghost" onClick={() => {
-                 console.log('🔔 [CHAT_MODAL] Closing chat modal');
-                 onClose();
-               }} className="text-white hover:bg-white/20">
-                 <X className="w-4 h-4" />
-               </Button>
-             </div>
+            <div className="flex items-center gap-1 md:gap-2">
+              <Button size="sm" variant="ghost" onClick={handleCall} className="text-white hover:bg-white/20 p-1 md:p-2">
+                <Phone className="w-3 h-3 md:w-4 md:h-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setIsMinimized(!isMinimized)} className="text-white hover:bg-white/20 p-1 md:p-2">
+                {isMinimized ? <Maximize2 className="w-3 h-3 md:w-4 md:h-4" /> : <Minimize2 className="w-3 h-3 md:w-4 md:h-4" />}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => {
+                console.log('🔔 [CHAT_MODAL] Closing chat modal');
+                onClose();
+              }} className="text-white hover:bg-white/20 p-1 md:p-2">
+                <X className="w-3 h-3 md:w-4 md:h-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Chat Body */}
           {!isMinimized && (
             <>
-              <div className="h-96 flex flex-col">
+              <div className="h-80 md:h-96 flex flex-col">
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+                <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 bg-gray-50">
                   {messages.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-200 flex items-center justify-center">
-                        <MessageSquare className="w-8 h-8 text-gray-400" />
+                    <div className="text-center text-muted-foreground py-6 md:py-8">
+                      <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 rounded-full bg-gray-200 flex items-center justify-center">
+                        <MessageSquare className="w-6 h-6 md:w-8 md:h-8 text-gray-400" />
                       </div>
-                      <p className="font-medium">No messages yet</p>
-                      <p className="text-sm">Start the conversation!</p>
+                      <p className="font-medium text-sm md:text-base">No messages yet</p>
+                      <p className="text-xs md:text-sm">Start the conversation!</p>
                     </div>
                   ) : (
                     messages.map((message) => (
@@ -539,7 +539,7 @@ const ChatModal = ({
                         className={`flex ${message.sender_type === currentUserType ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-xs px-4 py-2 rounded-2xl ${
+                          className={`max-w-[75%] md:max-w-xs px-3 md:px-4 py-2 rounded-2xl ${
                             message.sender_type === currentUserType
                               ? 'bg-primary text-white rounded-br-md'
                               : 'bg-white border border-gray-200 rounded-bl-md'
@@ -567,10 +567,10 @@ const ChatModal = ({
                 </div>
 
                 {/* Message input */}
-                <div className="border-t bg-white p-4">
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" className="text-gray-500">
-                      <Paperclip className="w-4 h-4" />
+                <div className="border-t bg-white p-3 md:p-4">
+                  <div className="flex gap-1 md:gap-2">
+                    <Button size="sm" variant="ghost" className="text-gray-500 p-1 md:p-2">
+                      <Paperclip className="w-3 h-3 md:w-4 md:h-4" />
                     </Button>
                     <Input
                       value={newMessage}
@@ -578,21 +578,21 @@ const ChatModal = ({
                       onKeyPress={handleKeyPress}
                       placeholder="Type your message..."
                       disabled={isLoading}
-                      className="flex-1 border-gray-200 focus:border-primary"
+                      className="flex-1 border-gray-200 focus:border-primary text-sm md:text-base"
                     />
-                    <Button size="sm" variant="ghost" className="text-gray-500">
-                      <Smile className="w-4 h-4" />
+                    <Button size="sm" variant="ghost" className="text-gray-500 p-1 md:p-2">
+                      <Smile className="w-3 h-3 md:w-4 md:h-4" />
                     </Button>
                     <Button 
                       onClick={sendMessage} 
                       disabled={isLoading || !newMessage.trim()}
                       size="sm"
-                      className="bg-primary hover:bg-primary/90 text-white"
+                      className="bg-primary hover:bg-primary/90 text-white p-1 md:p-2"
                     >
                       {isLoading ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-3 h-3 md:w-4 md:h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <Send className="w-4 h-4" />
+                        <Send className="w-3 h-3 md:w-4 md:h-4" />
                       )}
                     </Button>
                   </div>

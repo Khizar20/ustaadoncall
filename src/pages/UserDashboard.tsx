@@ -492,9 +492,56 @@ const UserDashboard = () => {
       <Navigation />
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 pt-24">
+        {/* Mobile Navigation Tabs */}
+        <div className="lg:hidden mb-6">
+          <div className="flex overflow-x-auto space-x-2 pb-2">
+            <Button
+              variant={activeTab === 'dashboard' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('dashboard')}
+              className="whitespace-nowrap"
+            >
+              <Home className="w-4 h-4 mr-1" />
+              Overview
+            </Button>
+            <Button
+              variant={activeTab === 'bookings' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('bookings')}
+              className="whitespace-nowrap"
+            >
+              <Calendar className="w-4 h-4 mr-1" />
+              Bookings
+              <NotificationBadge 
+                currentUserId={userInfo?.id || ''} 
+                currentUserType="user"
+                className="ml-1"
+              />
+            </Button>
+            <Button
+              variant={activeTab === 'favorites' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('favorites')}
+              className="whitespace-nowrap"
+            >
+              <Heart className="w-4 h-4 mr-1" />
+              Favorites
+            </Button>
+            <Button
+              variant={activeTab === 'profile' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('profile')}
+              className="whitespace-nowrap"
+            >
+              <User className="w-4 h-4 mr-1" />
+              Profile
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
+          {/* Desktop Sidebar */}
+          <div className="hidden lg:block lg:col-span-1">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Dashboard</CardTitle>
@@ -572,51 +619,51 @@ const UserDashboard = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Bookings</p>
-                          <p className="text-2xl font-bold">{bookings.length}</p>
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Bookings</p>
+                          <p className="text-lg md:text-2xl font-bold">{bookings.length}</p>
                         </div>
-                        <Calendar className="h-8 w-8 text-blue-600" />
+                        <Calendar className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Favorite Providers</p>
-                          <p className="text-2xl font-bold">{favorites.length}</p>
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Favorite Providers</p>
+                          <p className="text-lg md:text-2xl font-bold">{favorites.length}</p>
                         </div>
-                        <Heart className="h-8 w-8 text-red-600" />
+                        <Heart className="h-6 w-6 md:h-8 md:w-8 text-red-600" />
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Payment Methods</p>
-                          <p className="text-2xl font-bold">{paymentMethods.length}</p>
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Payment Methods</p>
+                          <p className="text-lg md:text-2xl font-bold">{paymentMethods.length}</p>
                         </div>
-                        <CreditCard className="h-8 w-8 text-green-600" />
+                        <CreditCard className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Saved Addresses</p>
-                          <p className="text-2xl font-bold">{addresses.length}</p>
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Saved Addresses</p>
+                          <p className="text-lg md:text-2xl font-bold">{addresses.length}</p>
                         </div>
-                        <MapPin className="h-8 w-8 text-purple-600" />
+                        <MapPin className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
                       </div>
                     </CardContent>
                   </Card>
@@ -746,15 +793,16 @@ const UserDashboard = () => {
                             </div>
                           )}
                           
-                          <div className="flex items-center justify-between pt-4 border-t">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-4 border-t gap-3">
                             <span className="text-xs text-muted-foreground">
                               Booked on {formatDate(booking.created_at)}
                             </span>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <Button 
                                 variant="outline" 
                                 size="sm"
                                 onClick={() => setShowChatForBooking(showChatForBooking === booking.id ? null : booking.id)}
+                                className="flex-1 sm:flex-none"
                               >
                                 <MessageSquare className="w-4 h-4 mr-1" />
                                 {showChatForBooking === booking.id ? 'Hide Chat' : 'Chat'}
@@ -768,6 +816,7 @@ const UserDashboard = () => {
                                 variant="outline" 
                                 size="sm"
                                 onClick={() => handleCallProvider(booking.contact_phone)}
+                                className="flex-1 sm:flex-none"
                               >
                                 <Phone className="w-4 h-4 mr-1" />
                                 Call
@@ -776,7 +825,7 @@ const UserDashboard = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  className="text-red-600 hover:text-red-700"
+                                  className="text-red-600 hover:text-red-700 flex-1 sm:flex-none"
                                   onClick={() => showConfirmationDialog(booking.id, 'cancelled', 'Cancel Booking', 'Are you sure you want to cancel this booking? This action cannot be undone.')}
                                 >
                                   <X className="w-4 h-4 mr-1" />

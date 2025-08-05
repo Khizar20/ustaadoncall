@@ -204,7 +204,7 @@ export default function ProvidersMap({
                           <div className="flex items-center gap-1">
                             <Star className="h-4 w-4 fill-primary text-primary" />
                             <span className="text-sm font-medium">
-                              {provider.rating || 0}
+                              {(provider.rating || 0).toFixed(1)}
                             </span>
                           </div>
                           <span className="text-sm text-muted-foreground">

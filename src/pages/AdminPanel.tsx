@@ -968,7 +968,7 @@ const AdminPanel = () => {
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                 <div className="flex items-center gap-2 text-sm">
                                   <Star className="w-4 h-4 text-yellow-500" />
-                                  {provider.rating} ({provider.reviews_count} reviews)
+                                  {provider.rating?.toFixed(1) || '0'} ({provider.reviews_count} reviews)
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <Calendar className="w-4 h-4 text-muted-foreground" />

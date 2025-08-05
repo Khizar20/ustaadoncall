@@ -660,46 +660,46 @@ const ProviderProfile = () => {
       
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
             {/* Provider Info */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-6 md:space-y-8">
               {/* Profile Header */}
-              <Card className="p-8 border-border bg-card">
-                <div className="flex flex-col md:flex-row gap-6">
+              <Card className="p-4 md:p-8 border-border bg-card">
+                <div className="flex flex-col md:flex-row gap-4 md:gap-6">
                   <img
                     src={provider.profile_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face"}
                     alt={provider.name}
-                    className="w-32 h-32 rounded-full object-cover"
+                    className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover mx-auto md:mx-0"
                     onError={(e) => {
                       e.currentTarget.src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face";
                     }}
                   />
-                  <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-foreground mb-2">{provider.name}</h1>
-                    <p className="text-primary font-medium text-lg mb-3">{getServiceCategories(provider)}</p>
+                  <div className="flex-1 text-center md:text-left">
+                    <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{provider.name}</h1>
+                    <p className="text-primary font-medium text-base md:text-lg mb-3">{getServiceCategories(provider)}</p>
                     
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-2 md:gap-4 mb-3 md:mb-4">
                       <div className="flex items-center gap-1">
-                        <Star className="h-5 w-5 fill-primary text-primary" />
-                        <span className="font-semibold text-foreground">{provider.rating || 0}</span>
-                        <span className="text-muted-foreground">({provider.reviews_count || 0} reviews)</span>
+                        <Star className="h-4 w-4 md:h-5 md:w-5 fill-primary text-primary" />
+                        <span className="font-semibold text-foreground text-sm md:text-base">{(provider.rating || 0).toFixed(1)}</span>
+                        <span className="text-muted-foreground text-xs md:text-sm">({provider.reviews_count || 0} reviews)</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">{provider.location || "Location not specified"}</span>
+                        <MapPin className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground text-xs md:text-sm">{provider.location || "Location not specified"}</span>
                         {distance !== null && (
-                          <span className="text-sm text-primary font-medium">
+                          <span className="text-xs md:text-sm text-primary font-medium">
                             • {distance.toFixed(1)} km away
                           </span>
                         )}
                       </div>
                     </div>
                     
-                    <p className="text-muted-foreground mb-4">
+                    <p className="text-muted-foreground mb-3 md:mb-4 text-sm md:text-base">
                       Experience: {provider.experience || "Not specified"}
                     </p>
                     
-                    <p className="font-semibold text-foreground text-lg">
+                    <p className="font-semibold text-foreground text-base md:text-lg">
                       {getStartingPrice(provider)}
                     </p>
                   </div>
@@ -708,12 +708,12 @@ const ProviderProfile = () => {
 
               {/* Interactive Location Map */}
               {provider.latitude && provider.longitude && (
-                <Card className="p-8 border-border bg-card">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl font-bold text-foreground">Location</h2>
+                <Card className="p-4 md:p-8 border-border bg-card">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                    <h2 className="text-xl md:text-2xl font-bold text-foreground">Location</h2>
                     {distance !== null && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
+                      <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3 md:h-4 md:w-4" />
                         <span>Distance: <span className="font-medium text-primary">{distance.toFixed(1)} km</span></span>
                       </div>
                     )}
@@ -735,15 +735,17 @@ const ProviderProfile = () => {
                     />
                   </MapErrorBoundary>
                   
-                  <div className="mt-4 p-4 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      <span>{provider.location}</span>
+                  <div className="mt-4 p-3 md:p-4 bg-muted rounded-lg">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs md:text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                        <span>{provider.location}</span>
+                      </div>
                       {distance !== null && (
-                        <>
+                        <div className="flex items-center gap-2">
                           <span>•</span>
                           <span>Distance from you: <span className="font-medium text-primary">{distance.toFixed(1)} km</span></span>
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -752,24 +754,24 @@ const ProviderProfile = () => {
 
               {/* About Section */}
               {provider.bio && (
-                <Card className="p-8 border-border bg-card">
-                  <h2 className="text-2xl font-bold text-foreground mb-4">About</h2>
-                  <p className="text-muted-foreground leading-relaxed">{provider.bio}</p>
+                <Card className="p-4 md:p-8 border-border bg-card">
+                  <h2 className="text-xl md:text-2xl font-bold text-foreground mb-3 md:mb-4">About</h2>
+                  <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{provider.bio}</p>
                 </Card>
               )}
 
               {/* Services & Pricing */}
               {!provider.jobs_pricing || Object.keys(provider.jobs_pricing).length === 0 ? (
-                <Card className="p-8 border-border bg-card">
-                  <h2 className="text-2xl font-bold text-foreground mb-6">Services & Pricing</h2>
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No services and pricing information available.</p>
-                    <p className="text-sm text-muted-foreground mt-2">This provider hasn't set up their services yet.</p>
+                <Card className="p-4 md:p-8 border-border bg-card">
+                  <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">Services & Pricing</h2>
+                  <div className="text-center py-6 md:py-8">
+                    <p className="text-sm md:text-base text-muted-foreground">No services and pricing information available.</p>
+                    <p className="text-xs md:text-sm text-muted-foreground mt-2">This provider hasn't set up their services yet.</p>
                   </div>
                 </Card>
               ) : (
-                <Card className="p-8 border-border bg-card">
-                  <h2 className="text-2xl font-bold text-foreground mb-6">Services & Pricing</h2>
+                <Card className="p-4 md:p-8 border-border bg-card">
+                  <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">Services & Pricing</h2>
                   <div className="space-y-6">
                     {Object.entries(provider.jobs_pricing).map(([category, services]) => (
                       <div key={category} className="border-b border-border pb-6 last:border-b-0">
@@ -960,17 +962,17 @@ const ProviderProfile = () => {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {/* Contact Card */}
-              <Card className="p-6 border-border bg-card">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Contact</h3>
+              <Card className="p-4 md:p-6 border-border bg-card">
+                <h3 className="text-base md:text-lg font-semibold text-foreground mb-3 md:mb-4">Contact</h3>
                 
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {hasBooked ? (
                     <>
                       <Button 
                         variant="outline" 
-                        className="w-full"
+                        className="w-full text-sm"
                         onClick={handleRedirectToDashboard}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
@@ -978,42 +980,42 @@ const ProviderProfile = () => {
                       </Button>
                       <Button 
                         variant="outline" 
-                        className="w-full"
+                        className="w-full text-sm"
                         onClick={handleRedirectToDashboard}
                       >
                         <Phone className="h-4 w-4 mr-2" />
                         Call Provider
                       </Button>
                       <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
-                        <p className="text-sm text-primary font-medium">
+                        <p className="text-xs md:text-sm text-primary font-medium">
                           Click above to access chat and call features in your dashboard
                         </p>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                        <div className="flex items-center gap-3 mb-3">
-                          <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                          <span className="font-medium text-foreground">Chat with Provider</span>
+                      <div className="p-3 md:p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
+                        <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                          <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
+                          <span className="font-medium text-foreground text-sm md:text-base">Chat with Provider</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs md:text-sm text-muted-foreground">
                           Chat with your provider from your user dashboard after booking
                         </p>
                       </div>
                       
-                      <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                        <div className="flex items-center gap-3 mb-3">
-                          <Phone className="h-5 w-5 text-muted-foreground" />
-                          <span className="font-medium text-foreground">Call Provider</span>
+                      <div className="p-3 md:p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
+                        <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                          <Phone className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
+                          <span className="font-medium text-foreground text-sm md:text-base">Call Provider</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs md:text-sm text-muted-foreground">
                           Call your provider from your user dashboard after booking
                         </p>
                       </div>
                       
                       <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
-                        <p className="text-sm text-primary font-medium">
+                        <p className="text-xs md:text-sm text-primary font-medium">
                           Book an appointment to access contact features in your dashboard
                         </p>
                       </div>
@@ -1024,37 +1026,37 @@ const ProviderProfile = () => {
 
               {/* Verification Badge */}
               {provider.is_verified && (
-                <Card className="p-6 border-border bg-card">
-                  <div className="flex items-center gap-3">
-                    <Shield className="h-6 w-6 text-primary" />
+                <Card className="p-4 md:p-6 border-border bg-card">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <Shield className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                     <div>
-                      <h4 className="font-semibold text-foreground">Verified Provider</h4>
-                      <p className="text-sm text-muted-foreground">This provider has been verified by our team</p>
+                      <h4 className="font-semibold text-foreground text-sm md:text-base">Verified Provider</h4>
+                      <p className="text-xs md:text-sm text-muted-foreground">This provider has been verified by our team</p>
                     </div>
                   </div>
                 </Card>
               )}
 
               {/* Quick Stats */}
-              <Card className="p-6 border-border bg-card">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Quick Stats</h3>
-                <div className="space-y-3">
+              <Card className="p-4 md:p-6 border-border bg-card">
+                <h3 className="text-base md:text-lg font-semibold text-foreground mb-3 md:mb-4">Quick Stats</h3>
+                <div className="space-y-2 md:space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Rating</span>
-                    <span className="font-semibold text-foreground">{provider.rating || 0}/5</span>
+                    <span className="text-muted-foreground text-xs md:text-sm">Rating</span>
+                    <span className="font-semibold text-foreground text-xs md:text-sm">{(provider.rating || 0).toFixed(1)}/5</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Reviews</span>
-                    <span className="font-semibold text-foreground">{provider.reviews_count || 0}</span>
+                    <span className="text-muted-foreground text-xs md:text-sm">Reviews</span>
+                    <span className="font-semibold text-foreground text-xs md:text-sm">{provider.reviews_count || 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Experience</span>
-                    <span className="font-semibold text-foreground">{provider.experience || "N/A"}</span>
+                    <span className="text-muted-foreground text-xs md:text-sm">Experience</span>
+                    <span className="font-semibold text-foreground text-xs md:text-sm">{provider.experience || "N/A"}</span>
                   </div>
                   {distance !== null && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Distance</span>
-                      <span className="font-semibold text-primary">{distance.toFixed(1)} km</span>
+                      <span className="text-muted-foreground text-xs md:text-sm">Distance</span>
+                      <span className="font-semibold text-primary text-xs md:text-sm">{distance.toFixed(1)} km</span>
                     </div>
                   )}
                 </div>

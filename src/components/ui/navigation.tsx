@@ -598,9 +598,9 @@ export function Navigation() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="lg:hidden border-t border-green-200 bg-white"
+              className="lg:hidden border-t border-green-200 bg-white max-h-[80vh] overflow-y-auto"
             >
-              <div className="py-6 space-y-2">
+              <div className="py-4 space-y-1">
                 {navigationItems.map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -613,7 +613,7 @@ export function Navigation() {
                       <Link
                         to={item.href}
                         className={cn(
-                          "flex items-center gap-3 px-6 py-4 text-sm font-medium transition-all duration-300 rounded-xl mx-4",
+                          "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-300 rounded-xl mx-2",
                           location.pathname === item.href
                             ? "text-green-600 bg-green-50 shadow-md border border-green-200"
                             : "text-slate-800 hover:text-green-600 hover:bg-green-50"
@@ -628,8 +628,8 @@ export function Navigation() {
                 })}
 
                 {/* Mobile Language Toggle - Always Visible */}
-                <div className="border-t border-green-200 pt-6 mt-6">
-                  <div className="px-6 py-4">
+                <div className="border-t border-green-200 pt-4 mt-4">
+                  <div className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-slate-700">Language</span>
                       <LanguageToggle />
@@ -638,7 +638,7 @@ export function Navigation() {
                 </div>
 
                 {/* Mobile Login Buttons - Conditionally Visible */}
-                <div className="border-t border-green-200 pt-6 mt-6 space-y-3 px-4">
+                <div className="border-t border-green-200 pt-4 mt-4 space-y-2 px-4">
                   {/* Show User Login only if not logged in as user AND not logged in as both */}
                   {currentAccountType !== 'user' && !isLoggedInAsBoth() && (
                     <Button variant="outline" size="sm" asChild className="w-full rounded-xl border-green-300 hover:border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50">
@@ -669,22 +669,22 @@ export function Navigation() {
 
                 {/* Mobile User Menu - Show if logged in */}
                 {currentAccountType && (
-                  <div className="border-t border-green-200 pt-6 mt-6">
-                    <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-green-100/50">
+                  <div className="border-t border-green-200 pt-4 mt-4">
+                    <div className="px-4 py-3 bg-gradient-to-r from-green-50 to-green-100/50">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
-                          <User className="w-6 h-6 text-white" />
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-white" />
                         </div>
-                        <div>
-                          <p className="font-semibold text-slate-800">{getCurrentUserInfo()?.name}</p>
-                          <p className="text-sm text-green-600">{getCurrentUserInfo()?.email}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-800 text-sm truncate">{getCurrentUserInfo()?.name}</p>
+                          <p className="text-xs text-green-600 truncate">{getCurrentUserInfo()?.email}</p>
                           <p className="text-xs text-blue-600">
                             {getCurrentUserInfo()?.type === 'provider' ? 'Provider Account' : 'User Account'}
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-1 px-4">
+                    <div className="space-y-1 px-2">
                       {/* Account switching options when logged in as both */}
                       {isLoggedInAsBoth() && (
                         <>
@@ -693,32 +693,32 @@ export function Navigation() {
                           </div>
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700 text-sm"
                             onClick={() => {
                               handleSwitchAccount('user');
                               setIsOpen(false);
                             }}
                           >
                             <User className="w-4 h-4" />
-                            <span>Switch to User Account</span>
+                            <span className="truncate">Switch to User Account</span>
                           </Button>
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700 text-sm"
                             onClick={() => {
                               handleSwitchAccount('provider');
                               setIsOpen(false);
                             }}
                           >
                             <FileText className="w-4 h-4" />
-                            <span>Switch to Provider Account</span>
+                            <span className="truncate">Switch to Provider Account</span>
                           </Button>
                           <div className="border-t border-green-100 my-2"></div>
                         </>
                       )}
 
                       {/* Notification Button */}
-                      <div className="px-4 py-2">
+                      <div className="px-2 py-2">
                         <NotificationDropdown 
                           currentUserId={getCurrentUserInfo()?.id || ''} 
                           currentUserType={currentAccountType}
@@ -731,7 +731,7 @@ export function Navigation() {
                         <>
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700 text-sm"
                             onClick={() => {
                               navigate('/user-dashboard');
                               setIsOpen(false);
@@ -742,7 +742,7 @@ export function Navigation() {
                           </Button>
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700 text-sm"
                             onClick={() => {
                               navigate('/user-urgent-requests');
                               setIsOpen(false);
@@ -753,7 +753,7 @@ export function Navigation() {
                           </Button>
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700 text-sm"
                             onClick={() => {
                               navigate('/create-live-request');
                               setIsOpen(false);
@@ -770,7 +770,7 @@ export function Navigation() {
                         <>
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700 text-sm"
                             onClick={() => {
                               navigate('/provider-dashboard');
                               setIsOpen(false);
@@ -781,7 +781,7 @@ export function Navigation() {
                           </Button>
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-3 p-4 rounded-xl hover:bg-green-50 text-slate-700"
+                            className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-green-50 text-slate-700 text-sm"
                             onClick={() => {
                               navigate('/provider-notifications');
                               setIsOpen(false);
@@ -795,7 +795,7 @@ export function Navigation() {
 
                       <Button
                         variant="ghost"
-                        className="w-full justify-start gap-3 p-4 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="w-full justify-start gap-3 p-3 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50 text-sm"
                         onClick={() => {
                           handleLogout();
                           setIsOpen(false);

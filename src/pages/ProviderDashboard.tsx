@@ -653,9 +653,56 @@ const ProviderDashboard = () => {
       <Navigation />
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 pt-24">
+        {/* Mobile Navigation Tabs */}
+        <div className="lg:hidden mb-6">
+          <div className="flex overflow-x-auto space-x-2 pb-2">
+            <Button
+              variant={activeTab === 'dashboard' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('dashboard')}
+              className="whitespace-nowrap"
+            >
+              <Eye className="w-4 h-4 mr-1" />
+              Dashboard
+            </Button>
+            <Button
+              variant={activeTab === 'orders' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('orders')}
+              className="whitespace-nowrap"
+            >
+              <Calendar className="w-4 h-4 mr-1" />
+              Orders
+              <NotificationBadge 
+                currentUserId={providerInfo?.id || ''} 
+                currentUserType="provider"
+                className="ml-1"
+              />
+            </Button>
+            <Button
+              variant={activeTab === 'services' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('services')}
+              className="whitespace-nowrap"
+            >
+              <FileText className="w-4 h-4 mr-1" />
+              Services
+            </Button>
+            <Button
+              variant={activeTab === 'reviews' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('reviews')}
+              className="whitespace-nowrap"
+            >
+              <Star className="w-4 h-4 mr-1" />
+              Reviews
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
+          {/* Desktop Sidebar */}
+          <div className="hidden lg:block lg:col-span-1">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Navigation</CardTitle>
@@ -741,85 +788,85 @@ const ProviderDashboard = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
-                          <p className="text-2xl font-bold">{bookings.length}</p>
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Orders</p>
+                          <p className="text-lg md:text-2xl font-bold">{bookings.length}</p>
                         </div>
-                        <Calendar className="h-8 w-8 text-blue-600" />
+                        <Calendar className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Completed Jobs</p>
-                          <p className="text-2xl font-bold">{bookings.filter(booking => booking.status === 'completed').length}</p>
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Completed</p>
+                          <p className="text-lg md:text-2xl font-bold">{bookings.filter(booking => booking.status === 'completed').length}</p>
                         </div>
-                        <CheckCircle className="h-8 w-8 text-green-600" />
+                        <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Pending Earnings</p>
-                          <p className="text-2xl font-bold">
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Pending</p>
+                          <p className="text-lg md:text-2xl font-bold">
                             Rs. {bookings
                               .filter(booking => ['pending', 'confirmed'].includes(booking.status))
                               .reduce((total, booking) => total + booking.total_amount, 0)
                               .toLocaleString()}
                           </p>
                         </div>
-                        <Clock className="h-8 w-8 text-yellow-600" />
+                        <Clock className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Earnings</p>
-                          <p className="text-2xl font-bold">
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Earnings</p>
+                          <p className="text-lg md:text-2xl font-bold">
                             Rs. {bookings
                               .filter(booking => booking.status === 'completed')
                               .reduce((total, booking) => total + booking.total_amount, 0)
                               .toLocaleString()}
                           </p>
                         </div>
-                        <DollarSign className="h-8 w-8 text-green-600" />
+                        <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Rating</p>
-                          <p className="text-2xl font-bold">{providerInfo.rating || 0}</p>
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Rating</p>
+                          <p className="text-lg md:text-2xl font-bold">{providerInfo.rating || 0}</p>
                         </div>
-                        <Star className="h-8 w-8 text-yellow-600" />
+                        <Star className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Reviews</p>
-                          <p className="text-2xl font-bold">{providerInfo.reviews_count || 0}</p>
+                          <p className="text-xs md:text-sm font-medium text-muted-foreground">Reviews</p>
+                          <p className="text-lg md:text-2xl font-bold">{providerInfo.reviews_count || 0}</p>
                         </div>
-                        <FileText className="h-8 w-8 text-purple-600" />
+                        <FileText className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
                       </div>
                     </CardContent>
                   </Card>
@@ -899,7 +946,7 @@ const ProviderDashboard = () => {
 
                             {/* Action Buttons */}
                             {booking.status === 'pending' && (
-                              <div className="flex gap-2 pt-3 border-t">
+                              <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t">
                                 <Button 
                                   size="sm" 
                                   onClick={() => showConfirmationDialog(booking.id, 'confirmed', 'Confirm Booking', 'Are you sure you want to confirm this booking? This action cannot be undone.')}
@@ -921,7 +968,7 @@ const ProviderDashboard = () => {
                             )}
 
                             {booking.status === 'confirmed' && (
-                              <div className="flex gap-2 pt-3 border-t">
+                              <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t">
                                 <Button 
                                   size="sm" 
                                   onClick={() => showConfirmationDialog(booking.id, 'completed', 'Mark Complete', 'Are you sure you want to mark this booking as completed? This action cannot be undone.')}
@@ -934,7 +981,7 @@ const ProviderDashboard = () => {
                             )}
 
                             {/* Chat and Call Buttons */}
-                            <div className="flex gap-2 pt-3 border-t">
+                            <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t">
                               <Button 
                                 size="sm" 
                                 variant="outline"
@@ -1062,27 +1109,27 @@ const ProviderDashboard = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
+                className="space-y-4 md:space-y-6"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-3xl font-bold mb-2">Service Management</h2>
-                    <p className="text-muted-foreground">Manage your service offerings, experience, and pricing</p>
+                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Service Management</h2>
+                    <p className="text-sm md:text-base text-muted-foreground">Manage your service offerings, experience, and pricing</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     {isEditingServices ? (
                       <>
-                        <Button onClick={saveServices} size="sm">
+                        <Button onClick={saveServices} size="sm" className="text-sm">
                           <Save className="w-4 h-4 mr-2" />
                           Save Changes
                         </Button>
-                        <Button variant="outline" onClick={() => setIsEditingServices(false)} size="sm">
+                        <Button variant="outline" onClick={() => setIsEditingServices(false)} size="sm" className="text-sm">
                           <X className="w-4 h-4 mr-2" />
                           Cancel
                         </Button>
                       </>
                     ) : (
-                      <Button onClick={() => setIsEditingServices(true)} size="sm">
+                      <Button onClick={() => setIsEditingServices(true)} size="sm" className="text-sm">
                         <Edit className="w-4 h-4 mr-2" />
                         Edit Services
                       </Button>
@@ -1092,10 +1139,10 @@ const ProviderDashboard = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>Service Categories & Pricing</span>
+                    <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-lg md:text-xl">Service Categories & Pricing</span>
                       {isEditingServices && (
-                        <Button size="sm" onClick={addService}>
+                        <Button size="sm" onClick={addService} className="text-sm">
                           <Plus className="w-4 h-4 mr-2" />
                           Add Service
                         </Button>
@@ -1103,20 +1150,20 @@ const ProviderDashboard = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-6">
+                    <div className="space-y-4 md:space-y-6">
                       {services.map((service, serviceIndex) => (
-                        <div key={serviceIndex} className="border rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex gap-4 flex-1">
+                        <div key={serviceIndex} className="border rounded-lg p-3 md:p-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 md:mb-4 gap-3">
+                            <div className="flex flex-col md:flex-row gap-3 md:gap-4 flex-1">
                               {isEditingServices ? (
                                 <>
                                   <div className="flex-1">
-                                    <Label>Service Category</Label>
+                                    <Label className="text-sm">Service Category</Label>
                                     <Select
                                       value={service.category}
                                       onValueChange={(value) => updateService(serviceIndex, 'category', value)}
                                     >
-                                      <SelectTrigger>
+                                      <SelectTrigger className="text-sm">
                                         <SelectValue placeholder="Select category" />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -1128,13 +1175,13 @@ const ProviderDashboard = () => {
                                       </SelectContent>
                                     </Select>
                                   </div>
-                                  <div className="w-32">
-                                    <Label>Experience</Label>
+                                  <div className="w-full md:w-32">
+                                    <Label className="text-sm">Experience</Label>
                                     <Select
                                       value={service.experience}
                                       onValueChange={(value) => updateService(serviceIndex, 'experience', value)}
                                     >
-                                      <SelectTrigger>
+                                      <SelectTrigger className="text-sm">
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -1150,8 +1197,8 @@ const ProviderDashboard = () => {
                               ) : (
                                 <>
                                   <div>
-                                    <h4 className="font-medium capitalize">{service.category}</h4>
-                                    <p className="text-sm text-muted-foreground">{service.experience} years experience</p>
+                                    <h4 className="font-medium capitalize text-sm md:text-base">{service.category}</h4>
+                                    <p className="text-xs md:text-sm text-muted-foreground">{service.experience} years experience</p>
                                   </div>
                                 </>
                               )}
@@ -1161,6 +1208,7 @@ const ProviderDashboard = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => removeService(serviceIndex)}
+                                className="text-sm"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1168,10 +1216,10 @@ const ProviderDashboard = () => {
                           </div>
 
                           <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <h5 className="font-medium">Jobs & Pricing</h5>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <h5 className="font-medium text-sm md:text-base">Jobs & Pricing</h5>
                               {isEditingServices && (
-                                <Button size="sm" onClick={() => addJob(serviceIndex)}>
+                                <Button size="sm" onClick={() => addJob(serviceIndex)} className="text-sm">
                                   <Plus className="w-4 h-4 mr-2" />
                                   Add Job
                                 </Button>
@@ -1180,34 +1228,35 @@ const ProviderDashboard = () => {
                             
                             <div className="space-y-2">
                               {service.jobs.map((job, jobIndex) => (
-                                <div key={jobIndex} className="flex items-center gap-2">
+                                <div key={jobIndex} className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                                   {isEditingServices ? (
                                     <>
                                       <Input
                                         placeholder="Job name"
                                         value={job.job}
                                         onChange={(e) => updateJob(serviceIndex, jobIndex, 'job', e.target.value)}
-                                        className="flex-1"
+                                        className="flex-1 text-sm"
                                       />
                                       <Input
                                         type="number"
                                         placeholder="Price"
                                         value={job.price}
                                         onChange={(e) => updateJob(serviceIndex, jobIndex, 'price', parseInt(e.target.value) || 0)}
-                                        className="w-24"
+                                        className="w-full sm:w-24 text-sm"
                                       />
                                       <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => removeJob(serviceIndex, jobIndex)}
+                                        className="text-sm"
                                       >
                                         <X className="w-4 h-4" />
                                       </Button>
                                     </>
                                   ) : (
                                     <>
-                                      <span className="flex-1">{job.job}</span>
-                                      <span className="font-medium">Rs. {job.price}</span>
+                                      <span className="flex-1 text-sm md:text-base">{job.job}</span>
+                                      <span className="font-medium text-sm md:text-base">Rs. {job.price}</span>
                                     </>
                                   )}
                                 </div>
@@ -1218,10 +1267,10 @@ const ProviderDashboard = () => {
                       ))}
                       
                       {services.length === 0 && !isEditingServices && (
-                        <div className="text-center py-8">
-                          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold mb-2">No services configured</h3>
-                          <p className="text-muted-foreground">
+                        <div className="text-center py-6 md:py-8">
+                          <FileText className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3 md:mb-4" />
+                          <h3 className="text-base md:text-lg font-semibold mb-2">No services configured</h3>
+                          <p className="text-sm md:text-base text-muted-foreground">
                             Add your services and pricing to start receiving bookings.
                           </p>
                         </div>
@@ -1236,34 +1285,34 @@ const ProviderDashboard = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
+                className="space-y-4 md:space-y-6"
               >
                 <div>
-                  <h2 className="text-3xl font-bold mb-2">Orders</h2>
-                  <p className="text-muted-foreground">Manage your service requests and bookings</p>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-2">Orders</h2>
+                  <p className="text-sm md:text-base text-muted-foreground">Manage your service requests and bookings</p>
                 </div>
 
                 {bookings.length === 0 ? (
                   <Card>
-                    <CardContent className="p-8">
+                    <CardContent className="p-6 md:p-8">
                       <div className="text-center">
-                        <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">No orders yet</h3>
-                        <p className="text-muted-foreground">
+                        <Calendar className="h-8 w-8 md:h-12 md:w-12 text-muted-foreground mx-auto mb-3 md:mb-4" />
+                        <h3 className="text-base md:text-lg font-semibold mb-2">No orders yet</h3>
+                        <p className="text-sm md:text-base text-muted-foreground">
                           You'll see your service requests and bookings here once customers start booking your services.
                         </p>
                       </div>
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 md:space-y-4">
                     {bookings.map((booking) => (
                       <Card key={booking.id} className="hover:shadow-md transition-shadow">
                         <CardHeader>
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div>
-                              <CardTitle className="text-lg">{booking.user_name}</CardTitle>
-                              <CardDescription>
+                              <CardTitle className="text-base md:text-lg">{booking.user_name}</CardTitle>
+                              <CardDescription className="text-sm">
                                 {formatDate(booking.booking_date)} at {booking.booking_time}
                               </CardDescription>
                             </div>
@@ -1272,19 +1321,19 @@ const ProviderDashboard = () => {
                             </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <CardContent className="space-y-3 md:space-y-4">
+                          <div className="grid grid-cols-1 gap-3 md:gap-4">
                             <div>
-                              <h4 className="font-medium mb-2">Customer Details</h4>
-                              <div className="space-y-1 text-sm">
+                              <h4 className="font-medium mb-2 text-sm md:text-base">Customer Details</h4>
+                              <div className="space-y-1 text-xs md:text-sm">
                                 <p><span className="font-medium">Name:</span> {booking.user_name}</p>
                                 <p><span className="font-medium">Phone:</span> {booking.user_phone}</p>
                                 <p><span className="font-medium">Location:</span> {booking.service_location}</p>
                               </div>
                             </div>
                             <div>
-                              <h4 className="font-medium mb-2">Service Details</h4>
-                              <div className="space-y-1 text-sm">
+                              <h4 className="font-medium mb-2 text-sm md:text-base">Service Details</h4>
+                              <div className="space-y-1 text-xs md:text-sm">
                                 <p><span className="font-medium">Total Amount:</span> Rs. {booking.total_amount.toLocaleString()}</p>
                                 <p><span className="font-medium">Services:</span></p>
                                 <div className="flex flex-wrap gap-1">
@@ -1300,19 +1349,19 @@ const ProviderDashboard = () => {
                           
                           {booking.special_instructions && (
                             <div>
-                              <h4 className="font-medium mb-2">Special Instructions</h4>
-                              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                              <h4 className="font-medium mb-2 text-sm md:text-base">Special Instructions</h4>
+                              <p className="text-xs md:text-sm text-muted-foreground bg-muted p-2 md:p-3 rounded-md">
                                 {booking.special_instructions}
                               </p>
                             </div>
                           )}
 
-                          <div className="flex items-center gap-2 pt-4 border-t">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-3 md:pt-4 border-t">
                             <Button 
                               size="sm" 
                               variant="outline"
                               onClick={() => setShowChatForBooking(showChatForBooking === booking.id ? null : booking.id)}
-                              className="flex-1"
+                              className="flex-1 text-sm"
                             >
                               <MessageSquare className="w-4 h-4 mr-1" />
                               {showChatForBooking === booking.id ? 'Hide Chat' : 'Chat'}
@@ -1328,7 +1377,7 @@ const ProviderDashboard = () => {
                                 <Button 
                                   size="sm" 
                                   onClick={() => showConfirmationDialog(booking.id, 'confirmed', 'Confirm Booking', 'Are you sure you want to confirm this booking? This action cannot be undone.')}
-                                  className="flex-1 bg-green-600 hover:bg-green-700"
+                                  className="flex-1 bg-green-600 hover:bg-green-700 text-sm"
                                 >
                                   <Check className="w-4 h-4 mr-1" />
                                   Confirm
@@ -1337,7 +1386,7 @@ const ProviderDashboard = () => {
                                   size="sm" 
                                   variant="destructive"
                                   onClick={() => showConfirmationDialog(booking.id, 'rejected', 'Reject Booking', 'Are you sure you want to reject this booking? This action cannot be undone.')}
-                                  className="flex-1"
+                                  className="flex-1 text-sm"
                                 >
                                   <X className="w-4 h-4 mr-1" />
                                   Reject
@@ -1349,7 +1398,7 @@ const ProviderDashboard = () => {
                               <Button 
                                 size="sm" 
                                 onClick={() => showConfirmationDialog(booking.id, 'completed', 'Mark Complete', 'Are you sure you want to mark this booking as completed? This action cannot be undone.')}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm"
                               >
                                 <CheckCircle className="w-4 h-4 mr-1" />
                                 Mark Complete

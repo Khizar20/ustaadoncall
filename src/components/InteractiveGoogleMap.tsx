@@ -44,6 +44,24 @@ const getServiceIcon = (serviceCategory: string): string => {
   }
 };
 
+// Calculate starting price for provider
+const getStartingPrice = (provider: ProviderWithLocation): string => {
+  if (!provider.jobs_pricing) return "Contact for pricing";
+  
+  let minPrice = Infinity;
+  Object.values(provider.jobs_pricing).forEach((services: any) => {
+    if (Array.isArray(services)) {
+      services.forEach((service: any) => {
+        if (service.price && service.price < minPrice) {
+          minPrice = service.price;
+        }
+      });
+    }
+  });
+  
+  return minPrice === Infinity ? "Contact for pricing" : `Starting from Rs. ${minPrice.toLocaleString()}`;
+};
+
 const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
   userLocation,
   providers,
@@ -332,27 +350,133 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
           if (!infoWindowRef.current) return;
 
           const content = `
-            <div style="padding: 16px; max-width: 300px;">
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">
-                  ${provider.name.charAt(0)}
+            <div style="
+              padding: 20px; 
+              max-width: 320px; 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+              border-radius: 12px;
+              box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+              border: 1px solid #e2e8f0;
+            ">
+              <!-- Header with provider info -->
+              <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                <div style="
+                  width: 56px; 
+                  height: 56px; 
+                  border-radius: 50%; 
+                  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  color: white; 
+                  font-weight: bold; 
+                  font-size: 20px;
+                  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                ">
+                  ${provider.name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${provider.name}</h3>
-                  <p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">${provider.service_category}</p>
+                <div style="flex: 1;">
+                  <h3 style="
+                    margin: 0; 
+                    font-size: 18px; 
+                    font-weight: 700; 
+                    color: #1e293b;
+                    line-height: 1.2;
+                  ">${provider.name}</h3>
+                  <p style="
+                    margin: 4px 0 0 0; 
+                    font-size: 14px; 
+                    color: #64748b;
+                    font-weight: 500;
+                  ">${provider.service_category}</p>
                 </div>
               </div>
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                <span style="color: #fbbf24;">★</span>
-                <span style="font-size: 14px; color: #374151;">${provider.rating || 0} (${provider.reviews_count || 0} reviews)</span>
+
+              <!-- Rating and reviews -->
+              <div style="
+                display: flex; 
+                align-items: center; 
+                gap: 8px; 
+                margin-bottom: 12px;
+                padding: 8px 12px;
+                background: #fef3c7;
+                border-radius: 8px;
+                border: 1px solid #fde68a;
+              ">
+                <span style="color: #f59e0b; font-size: 16px;">★</span>
+                <span style="
+                  font-size: 14px; 
+                  color: #92400e;
+                  font-weight: 600;
+                ">${(provider.rating || 0).toFixed(1)} (${provider.reviews_count || 0} reviews)</span>
               </div>
-              <div style="font-size: 14px; color: #6b7280; margin-bottom: 12px;">
-                <div>📍 ${distance.toFixed(1)} km away</div>
-                <div>💰 Starting from $${provider.jobs_pricing ? Object.values(provider.jobs_pricing)[0]?.[0]?.price || 'N/A' : 'N/A'}</div>
+
+              <!-- Distance and pricing -->
+              <div style="
+                margin-bottom: 16px;
+                padding: 12px;
+                background: #f1f5f9;
+                border-radius: 8px;
+                border-left: 4px solid #3b82f6;
+              ">
+                <div style="
+                  display: flex; 
+                  align-items: center; 
+                  gap: 6px; 
+                  margin-bottom: 6px;
+                  font-size: 14px; 
+                  color: #475569;
+                  font-weight: 500;
+                ">
+                  <span style="font-size: 16px;">📍</span>
+                  <span>${distance.toFixed(1)} km away</span>
+                </div>
+                <div style="
+                  display: flex; 
+                  align-items: center; 
+                  gap: 6px;
+                  font-size: 14px; 
+                  color: #059669;
+                  font-weight: 600;
+                ">
+                  <span style="font-size: 16px;">💰</span>
+                  <span>${getStartingPrice(provider)}</span>
+                </div>
               </div>
+
+              <!-- Action buttons -->
               <div style="display: flex; gap: 8px;">
-                <button onclick="window.providerSelect && window.providerSelect('${provider.id}')" style="flex: 1; padding: 8px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">View Details</button>
-                <button onclick="window.providerBook && window.providerBook('${provider.id}')" style="flex: 1; padding: 8px 12px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Book Now</button>
+                <button onclick="window.providerSelect && window.providerSelect('${provider.id}')" style="
+                  flex: 1; 
+                  padding: 10px 16px; 
+                  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+                  color: white; 
+                  border: none; 
+                  border-radius: 8px; 
+                  font-size: 14px; 
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)'">
+                  View Details
+                </button>
+                <button onclick="window.providerBook && window.providerBook('${provider.id}')" style="
+                  flex: 1; 
+                  padding: 10px 16px; 
+                  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                  color: white; 
+                  border: none; 
+                  border-radius: 8px; 
+                  font-size: 14px; 
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+                " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(16, 185, 129, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)'">
+                  Book Now
+                </button>
               </div>
             </div>
           `;
@@ -363,18 +487,19 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
           // Add global functions for button clicks
           (window as any).providerSelect = (providerId: string) => {
             const provider = providers.find(p => p.id === providerId);
-            if (provider && onProviderSelect) {
-              onProviderSelect(provider);
+            if (provider) {
+              // Navigate to provider profile page
+              window.location.href = `/provider/${providerId}`;
             }
             infoWindowRef.current?.close();
           };
 
           (window as any).providerBook = (providerId: string) => {
-            // Handle booking logic
-            toast({
-              title: "Booking",
-              description: "Booking feature coming soon!",
-            });
+            const provider = providers.find(p => p.id === providerId);
+            if (provider) {
+              // Navigate to provider profile page for booking
+              window.location.href = `/provider/${providerId}`;
+            }
             infoWindowRef.current?.close();
           };
         });
