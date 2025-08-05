@@ -15,7 +15,7 @@ export interface ProviderWithLocation {
   is_verified: boolean;
   rating: number;
   reviews_count: number;
-  jobs_pricing: Record<string, Record<string, string | number>>;
+  jobs_pricing: Record<string, Array<{ job: string; price: number }>>;
   created_at: string;
   latitude?: number;
   longitude?: number;

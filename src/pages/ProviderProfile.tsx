@@ -24,7 +24,7 @@ interface Provider {
   is_verified: boolean;
   rating: number;
   reviews_count: number;
-  jobs_pricing: Record<string, Record<string, string | number>>;
+  jobs_pricing: Record<string, Array<{ job: string; price: number }>>;
   created_at: string;
   latitude?: number;
   longitude?: number;
@@ -160,6 +160,7 @@ const ProviderProfile = () => {
 
         // Parse jobs_pricing if it's a string
         let parsedJobsPricing = data.jobs_pricing;
+        
         if (typeof data.jobs_pricing === 'string') {
           try {
             parsedJobsPricing = JSON.parse(data.jobs_pricing);
@@ -481,9 +482,9 @@ const ProviderProfile = () => {
     
     let minPrice = Infinity;
     Object.values(provider.jobs_pricing).forEach((services: any) => {
-      if (typeof services === 'object' && services !== null && !Array.isArray(services)) {
-        Object.values(services).forEach((price: any) => {
-          const numPrice = Number(price);
+      if (Array.isArray(services)) {
+        services.forEach((service: any) => {
+          const numPrice = Number(service.price);
           if (!isNaN(numPrice) && numPrice < minPrice) {
             minPrice = numPrice;
           }
@@ -802,38 +803,33 @@ const ProviderProfile = () => {
                 <Card className="p-4 md:p-8 border-border bg-card">
                   <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">Services & Pricing</h2>
                   <div className="space-y-6">
-                    {Object.entries(provider.jobs_pricing).map(([category, services]) => (
+                                        {Object.entries(provider.jobs_pricing).map(([category, services]) => (
                       <div key={category} className="border-b border-border pb-6 last:border-b-0">
                         <h3 className="text-lg font-semibold text-foreground mb-3">{category}</h3>
                         <div className="space-y-3">
-                          {typeof services === 'object' && services !== null && !Array.isArray(services) && 
-                            Object.entries(services).map(([jobName, price], index: number) => {
-                              const service = { job: jobName, price: Number(price) };
-                              return (
-                                <div 
-                                  key={index} 
-                                  className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-all hover:bg-accent ${
+                          {Array.isArray(services) && services.map((service: any, index: number) => (
+                            <div 
+                              key={index} 
+                              className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-all hover:bg-accent ${
+                                isJobSelected(category, service) 
+                                  ? 'border-primary bg-primary/10' 
+                                  : 'border-border bg-background'
+                              }`}
+                              onClick={() => handleJobSelection(category, service)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <CheckCircle 
+                                  className={`h-5 w-5 ${
                                     isJobSelected(category, service) 
-                                      ? 'border-primary bg-primary/10' 
-                                      : 'border-border bg-background'
+                                      ? 'text-primary' 
+                                      : 'text-muted-foreground'
                                   }`}
-                                  onClick={() => handleJobSelection(category, service)}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <CheckCircle 
-                                      className={`h-5 w-5 ${
-                                        isJobSelected(category, service) 
-                                          ? 'text-primary' 
-                                          : 'text-muted-foreground'
-                                      }`}
-                                    />
-                                    <span className="font-medium text-foreground">{jobName}</span>
-                                  </div>
-                                  <span className="font-semibold text-primary">{formatPrice(Number(price))}</span>
-                                </div>
-                              );
-                            })
-                          }
+                                />
+                                <span className="font-medium text-foreground">{service.job}</span>
+                              </div>
+                              <span className="font-semibold text-primary">{formatPrice(Number(service.price))}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
