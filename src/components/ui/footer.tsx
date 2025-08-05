@@ -56,15 +56,11 @@ export function Footer() {
             <div className="space-y-2 md:space-y-3">
               <div className="flex items-center space-x-2">
                 <Phone className="h-3 w-3 md:h-4 md:w-4 text-primary" />
-                <span className="text-sm md:text-base text-muted-foreground">+1 (555) 123-4567</span>
+                <span className="text-sm md:text-base text-muted-foreground">+92 3180542026</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="h-3 w-3 md:h-4 md:w-4 text-primary" />
                 <span className="text-sm md:text-base text-muted-foreground">hello@ustaadonca­ll.com</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-3 w-3 md:h-4 md:w-4 text-primary" />
-                <span className="text-sm md:text-base text-muted-foreground">Your City, Your State</span>
               </div>
             </div>
           </div>

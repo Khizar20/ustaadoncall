@@ -271,6 +271,28 @@ const Services = () => {
     return minPrice === Infinity ? "Contact for pricing" : `Starting from Rs. ${minPrice.toLocaleString()}`;
   };
 
+  const getFormattedExperience = (provider: Provider) => {
+    if (!provider.experience) return "Experience: Not specified";
+    
+    const serviceCategories = getServiceCategories(provider);
+    const experienceValues = provider.experience.split(',').map(exp => exp.trim());
+    
+    // If we have the same number of categories and experience values, map them
+    if (serviceCategories.length === experienceValues.length) {
+      const experienceMap = serviceCategories.map((category, index) => ({
+        category: category.trim(),
+        experience: experienceValues[index] || "Not specified"
+      }));
+      
+      return experienceMap.map(item => 
+        `${item.category} experience: ${item.experience} years`
+      ).join(', ');
+    }
+    
+    // Fallback: if we can't map properly, show the raw experience
+    return `Experience: ${provider.experience}`;
+  };
+
   // Calculate pagination
   const indexOfLastProvider = currentPage * providersPerPage;
   const indexOfFirstProvider = indexOfLastProvider - providersPerPage;
@@ -449,7 +471,7 @@ const Services = () => {
                             </span>
                           </div>
                           <p className="text-xs md:text-sm text-muted-foreground">
-                            Experience: {provider.experience || "Not specified"}
+                            {getFormattedExperience(provider)}
                           </p>
                           <p className="font-semibold text-foreground text-sm md:text-base">
                             {getStartingPrice(provider)}

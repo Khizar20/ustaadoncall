@@ -447,6 +447,35 @@ const ProviderProfile = () => {
     return provider.service_category || 'General Services';
   };
 
+  const getServiceCategoriesArray = (provider: Provider) => {
+    if (typeof provider.service_category === 'string') {
+      return provider.service_category.split(',').map(cat => cat.trim());
+    }
+    return [];
+  };
+
+  const getFormattedExperience = (provider: Provider) => {
+    if (!provider.experience) return "Experience: Not specified";
+    
+    const serviceCategories = getServiceCategoriesArray(provider);
+    const experienceValues = provider.experience.split(',').map(exp => exp.trim());
+    
+    // If we have the same number of categories and experience values, map them
+    if (serviceCategories.length === experienceValues.length) {
+      const experienceMap = serviceCategories.map((category, index) => ({
+        category: category.trim(),
+        experience: experienceValues[index] || "Not specified"
+      }));
+      
+      return experienceMap.map(item => 
+        `${item.category} experience: ${item.experience} years`
+      ).join(', ');
+    }
+    
+    // Fallback: if we can't map properly, show the raw experience
+    return `Experience: ${provider.experience}`;
+  };
+
   const getStartingPrice = (provider: Provider) => {
     if (!provider.jobs_pricing) return "Contact for pricing";
     
@@ -696,7 +725,7 @@ const ProviderProfile = () => {
                     </div>
                     
                     <p className="text-muted-foreground mb-3 md:mb-4 text-sm md:text-base">
-                      Experience: {provider.experience || "Not specified"}
+                      {getFormattedExperience(provider)}
                     </p>
                     
                     <p className="font-semibold text-foreground text-base md:text-lg">
@@ -1051,7 +1080,13 @@ const ProviderProfile = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-xs md:text-sm">Experience</span>
-                    <span className="font-semibold text-foreground text-xs md:text-sm">{provider.experience || "N/A"}</span>
+                    <span className="font-semibold text-foreground text-xs md:text-sm">
+                      {provider.experience ? 
+                        provider.experience.split(',').length > 1 ? 
+                          `${provider.experience.split(',').length} services` : 
+                          provider.experience 
+                        : "N/A"}
+                    </span>
                   </div>
                   {distance !== null && (
                     <div className="flex justify-between">

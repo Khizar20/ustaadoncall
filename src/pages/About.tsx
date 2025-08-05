@@ -56,7 +56,7 @@ const About = () => {
               TRUST.<br />
               TOGETHER.
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl text-white max-w-3xl mx-auto font-medium">
               We're revolutionizing local services by connecting communities with verified, premium professionals who care about quality as much as you do.
             </p>
           </div>
@@ -176,34 +176,34 @@ const About = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="text-center">
               <div className="w-32 h-32 bg-gradient-to-br from-primary to-primary/70 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary-foreground">AS</span>
+                <span className="text-2xl font-bold text-primary-foreground">KA</span>
               </div>
-              <h3 className="font-semibold text-lg text-foreground">Alex Smith</h3>
+              <h3 className="font-semibold text-lg text-foreground">Khizar Ahmed</h3>
               <p className="text-primary">CEO & Founder</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Former operations director with 10+ years in service industries
+                Visionary leader driving innovation in local services platform
               </p>
             </div>
             
             <div className="text-center">
               <div className="w-32 h-32 bg-gradient-to-br from-primary to-primary/70 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary-foreground">MJ</span>
+                <span className="text-2xl font-bold text-primary-foreground">UI</span>
               </div>
-              <h3 className="font-semibold text-lg text-foreground">Maya Johnson</h3>
+              <h3 className="font-semibold text-lg text-foreground">Umer Imran</h3>
               <p className="text-primary">CTO</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Tech veteran with expertise in marketplace platforms and mobile apps
+                Tech expert with deep expertise in marketplace platforms and mobile applications
               </p>
             </div>
             
             <div className="text-center">
               <div className="w-32 h-32 bg-gradient-to-br from-primary to-primary/70 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary-foreground">DR</span>
+                <span className="text-2xl font-bold text-primary-foreground">AH</span>
               </div>
-              <h3 className="font-semibold text-lg text-foreground">David Rodriguez</h3>
+              <h3 className="font-semibold text-lg text-foreground">Ayesha Hissam</h3>
               <p className="text-primary">Head of Operations</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Quality assurance expert ensuring every provider meets our standards
+                Operations specialist ensuring quality and efficiency across all services
               </p>
             </div>
           </div>

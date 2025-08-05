@@ -126,6 +126,8 @@ const UserDashboard = () => {
     providerId: string;
     providerName: string;
   } | null>(null);
+  const [reviewedBookings, setReviewedBookings] = useState<Set<string>>(new Set());
+  const [reviewModalShown, setReviewModalShown] = useState<Set<string>>(new Set());
   const [confirmationDialog, setConfirmationDialog] = useState<{
     isOpen: boolean;
     bookingId: string | null;
@@ -247,6 +249,16 @@ const UserDashboard = () => {
         // Check for completed bookings that need reviews
         const completedBookings = transformedBookings.filter(booking => booking.status === 'completed');
         for (const booking of completedBookings) {
+          // Skip if we've already shown the review modal for this booking
+          if (reviewModalShown.has(booking.id)) {
+            continue;
+          }
+
+          // Skip if this booking has already been reviewed
+          if (reviewedBookings.has(booking.id)) {
+            continue;
+          }
+
           // Check if user has already reviewed this booking
           const { data: existingReview } = await supabase
             .from('reviews')
@@ -263,7 +275,12 @@ const UserDashboard = () => {
               providerId: booking.provider_id,
               providerName: booking.provider_name
             });
+            // Mark this booking as having the review modal shown
+            setReviewModalShown(prev => new Set([...prev, booking.id]));
             break; // Only show one review modal at a time
+          } else {
+            // Mark this booking as reviewed
+            setReviewedBookings(prev => new Set([...prev, booking.id]));
           }
         }
       } catch (error: any) {
@@ -278,6 +295,29 @@ const UserDashboard = () => {
 
     fetchBookings();
   }, [userInfo?.id, toast]);
+
+  // Fetch existing reviews to initialize reviewedBookings state
+  useEffect(() => {
+    const fetchExistingReviews = async () => {
+      if (!userInfo?.id) return;
+
+      try {
+        const { data: reviews, error } = await supabase
+          .from('reviews')
+          .select('booking_id')
+          .eq('customer_id', userInfo.id);
+
+        if (!error && reviews) {
+          const reviewedBookingIds = new Set(reviews.map(review => review.booking_id));
+          setReviewedBookings(reviewedBookingIds);
+        }
+      } catch (error) {
+        console.error('Error fetching existing reviews:', error);
+      }
+    };
+
+    fetchExistingReviews();
+  }, [userInfo?.id]);
 
   // Real-time subscription for booking status changes
   useEffect(() => {
@@ -297,6 +337,11 @@ const UserDashboard = () => {
           
           // If booking status changed to completed, check if review is needed
           if (updatedBooking.status === 'completed') {
+            // Skip if we've already shown the review modal for this booking
+            if (reviewModalShown.has(updatedBooking.id)) {
+              return;
+            }
+
             // Check if user has already reviewed this booking
             const { data: existingReview } = await supabase
               .from('reviews')
@@ -323,7 +368,12 @@ const UserDashboard = () => {
                   providerId: updatedBooking.provider_id,
                   providerName: booking.providers?.name || 'Unknown Provider'
                 });
+                // Mark this booking as having the review modal shown
+                setReviewModalShown(prev => new Set([...prev, updatedBooking.id]));
               }
+            } else {
+              // Mark this booking as reviewed
+              setReviewedBookings(prev => new Set([...prev, updatedBooking.id]));
             }
           }
         }
@@ -965,6 +1015,12 @@ const UserDashboard = () => {
           providerName={showReviewModal.providerName}
           userId={userInfo.id}
           onReviewSubmitted={() => {
+            // Mark this booking as reviewed to prevent showing the modal again
+            if (showReviewModal) {
+              setReviewedBookings(prev => new Set([...prev, showReviewModal.bookingId]));
+              setReviewModalShown(prev => new Set([...prev, showReviewModal.bookingId]));
+            }
+            
             // Refresh bookings to update the review status
             fetchBookings().then(() => {
               console.log('✅ [USER_DASHBOARD] Bookings refreshed after review submission');
@@ -976,7 +1032,7 @@ const UserDashboard = () => {
                   const { data: providerData, error } = await supabase
                     .from('providers')
                     .select('rating, reviews_count')
-                    .eq('id', showReviewModal.providerId)
+                    .eq('id', showReviewModal?.providerId)
                     .single();
                   
                   if (!error && providerData) {

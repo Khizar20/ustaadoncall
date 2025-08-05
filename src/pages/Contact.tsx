@@ -153,7 +153,7 @@ const Contact = () => {
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Phone Support</h3>
                       <p className="text-muted-foreground mb-2">Speak directly with our support team</p>
-                      <p className="font-medium text-primary">+1 (555) 123-4567</p>
+                      <p className="font-medium text-primary">+92 3180542026</p>
                     </div>
                   </div>
                 </Card>
@@ -171,21 +171,7 @@ const Contact = () => {
                   </div>
                 </Card>
 
-                <Card className="p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <MapPin className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground mb-1">Office Location</h3>
-                      <p className="text-muted-foreground mb-2">Visit us in person</p>
-                      <p className="font-medium text-foreground">
-                        123 Business District<br />
-                        Your City, State 12345
-                      </p>
-                    </div>
-                  </div>
-                </Card>
+
 
                 <Card className="p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
                   <div className="flex items-start space-x-4">
