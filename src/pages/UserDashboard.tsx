@@ -83,6 +83,9 @@ interface Booking {
   special_instructions: string;
   created_at: string;
   provider_id: string;
+  payment_method?: string;
+  payment_method_name?: string;
+  payment_status?: string;
 }
 
 interface FavoriteProvider {
@@ -341,7 +344,10 @@ const UserDashboard = () => {
               contact_phone: providerPhone,
               special_instructions: booking.special_instructions,
               created_at: booking.created_at,
-              provider_id: booking.provider_id
+              provider_id: booking.provider_id,
+              payment_method: booking.payment_method,
+              payment_method_name: booking.payment_method_name,
+              payment_status: booking.payment_status
             };
           })
         );
@@ -991,6 +997,26 @@ const UserDashboard = () => {
                             <div className="mb-4">
                               <h4 className="text-sm font-medium text-muted-foreground mb-1">Special Instructions:</h4>
                               <p className="text-sm text-muted-foreground">{booking.special_instructions}</p>
+                            </div>
+                          )}
+
+                          {/* Payment Information */}
+                          {booking.payment_method && (
+                            <div className="mb-4">
+                              <h4 className="text-sm font-medium text-muted-foreground mb-1">Payment Information:</h4>
+                              <div className="flex items-center gap-2">
+                                <Badge 
+                                  variant={booking.payment_status === 'paid' ? 'default' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {booking.payment_status === 'paid' ? 'Paid' : 
+                                   booking.payment_status === 'pending' ? 'Pending' : 
+                                   booking.payment_status === 'failed' ? 'Failed' : 'Unknown'}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {booking.payment_method_name || 'Cash on Delivery'}
+                                </span>
+                              </div>
                             </div>
                           )}
                           

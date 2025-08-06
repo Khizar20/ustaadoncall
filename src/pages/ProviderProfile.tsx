@@ -7,6 +7,8 @@ import { Navigation } from "@/components/ui/navigation";
 import { Footer } from "@/components/ui/footer";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
+import PaymentMethodSelector from "@/components/PaymentMethodSelector";
+import { processPayment, getPaymentMethodName } from "@/lib/paymentService";
 
 import InteractiveGoogleMap from "@/components/InteractiveGoogleMap";
 import MapErrorBoundary from "@/components/MapErrorBoundary";
@@ -69,6 +71,8 @@ const ProviderProfile = () => {
   const [distance, setDistance] = useState<number | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash_on_delivery');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const { toast } = useToast();
 
   // Get user location
@@ -611,7 +615,10 @@ const ProviderProfile = () => {
       return;
     }
 
+    setIsProcessingPayment(true);
+
     try {
+      // First create the booking
       const bookingData = {
         user_id: currentUser.id,
         provider_id: provider.id,
@@ -619,26 +626,54 @@ const ProviderProfile = () => {
         total_amount: calculateTotalPrice(),
         booking_date: selectedDate,
         booking_time: selectedTime,
-        status: 'pending'
+        status: 'pending',
+        payment_method: selectedPaymentMethod,
+        payment_method_name: getPaymentMethodName(selectedPaymentMethod),
+        payment_status: 'pending'
       };
 
-      const { error } = await supabase
+      const { data: bookingResult, error: bookingError } = await supabase
         .from('bookings')
-        .insert([bookingData]);
+        .insert([bookingData])
+        .select()
+        .single();
 
-      if (error) {
-        throw error;
+      if (bookingError) {
+        throw bookingError;
+      }
+
+      // Process payment
+      const paymentResponse = await processPayment({
+        bookingId: bookingResult.id,
+        paymentMethod: selectedPaymentMethod,
+        amount: calculateTotalPrice(),
+        userId: currentUser.id,
+        providerId: provider.id
+      });
+
+      if (!paymentResponse.success) {
+        // If payment fails, update booking status
+        await supabase
+          .from('bookings')
+          .update({ 
+            payment_status: 'failed',
+            status: 'cancelled'
+          })
+          .eq('id', bookingResult.id);
+
+        throw new Error(paymentResponse.message);
       }
 
       toast({
         title: "Booking Successful",
-        description: "Your booking has been submitted. The provider will contact you soon.",
+        description: paymentResponse.message,
       });
 
       setHasBooked(true);
       setSelectedJobs([]);
       setSelectedDate("");
       setSelectedTime("");
+      setSelectedPaymentMethod('cash_on_delivery');
     } catch (error: any) {
       console.error('Error creating booking:', error);
       toast({
@@ -646,6 +681,8 @@ const ProviderProfile = () => {
         description: error.message || "Failed to create booking. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -964,12 +1001,30 @@ const ProviderProfile = () => {
                     </div>
                   )}
 
+                  {/* Payment Method Selection */}
+                  {selectedJobs.length > 0 && (
+                    <div className="mb-6">
+                      <PaymentMethodSelector
+                        selectedMethod={selectedPaymentMethod}
+                        onMethodChange={setSelectedPaymentMethod}
+                        totalAmount={calculateTotalPrice()}
+                      />
+                    </div>
+                  )}
+
                   <Button 
                     onClick={handleBooking}
-                    disabled={selectedJobs.length === 0 || !selectedDate || !selectedTime}
+                    disabled={selectedJobs.length === 0 || !selectedDate || !selectedTime || isProcessingPayment}
                     className="w-full"
                   >
-                    Book Appointment
+                    {isProcessingPayment ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing Payment...
+                      </>
+                    ) : (
+                      'Book Appointment'
+                    )}
                   </Button>
                 </Card>
               )}

@@ -26,6 +26,7 @@ import ChatModal from "@/components/ChatModal";
 import MessageNotification from "@/components/MessageNotification";
 import NotificationBadge from "@/components/NotificationBadge";
 import NotificationDropdown from "@/components/NotificationDropdown";
+import EarningsOverview from "@/components/EarningsOverview";
 import {
   User,
   Settings,
@@ -91,6 +92,9 @@ interface Booking {
   special_instructions: string;
   created_at: string;
   user_id: string;
+  payment_method?: string;
+  payment_method_name?: string;
+  payment_status?: string;
 }
 
 interface Review {
@@ -242,7 +246,10 @@ const ProviderDashboard = () => {
         service_location: booking.service_location,
         special_instructions: booking.special_instructions,
         created_at: booking.created_at,
-        user_id: booking.user_id
+        user_id: booking.user_id,
+        payment_method: booking.payment_method,
+        payment_method_name: booking.payment_method_name,
+        payment_status: booking.payment_status
       })) || [];
 
       setBookings(transformedBookings);
@@ -1356,6 +1363,28 @@ const ProviderDashboard = () => {
                             </div>
                           )}
 
+                          {/* Payment Information */}
+                          {booking.payment_method && (
+                            <div>
+                              <h4 className="font-medium mb-2 text-sm md:text-base">Payment Information</h4>
+                              <div className="space-y-1 text-xs md:text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Badge 
+                                    variant={booking.payment_status === 'paid' ? 'default' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    {booking.payment_status === 'paid' ? 'Paid' : 
+                                     booking.payment_status === 'pending' ? 'Pending' : 
+                                     booking.payment_status === 'failed' ? 'Failed' : 'Unknown'}
+                                  </Badge>
+                                  <span className="text-muted-foreground">
+                                    {booking.payment_method_name || 'Cash on Delivery'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-3 md:pt-4 border-t">
                             <Button 
                               size="sm" 
@@ -1436,17 +1465,9 @@ const ProviderDashboard = () => {
                   <p className="text-muted-foreground">Track your income and financial performance</p>
                 </div>
 
-                <Card>
-                  <CardContent className="p-8">
-                    <div className="text-center">
-                      <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No earnings yet</h3>
-                      <p className="text-muted-foreground">
-                        Your earnings and financial data will appear here once you start completing orders.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {providerInfo && (
+                  <EarningsOverview providerId={providerInfo.id} />
+                )}
               </motion.div>
             )}
 
