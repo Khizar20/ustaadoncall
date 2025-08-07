@@ -569,11 +569,29 @@ const ProviderDashboard = () => {
       }
 
       // Create notification for the user
-      const notificationType = confirmationDialog.action === 'confirmed' ? 'booking_confirmed' : 'booking_rejected';
-      const title = confirmationDialog.action === 'confirmed' ? 'Booking Confirmed' : 'Booking Rejected';
-      const message = confirmationDialog.action === 'confirmed' 
-        ? `Your booking for ${formatDate(bookingData.booking_date)} at ${bookingData.booking_time} has been confirmed by the provider.`
-        : `Your booking for ${formatDate(bookingData.booking_date)} at ${bookingData.booking_time} has been rejected by the provider.`;
+      let notificationType, title, message;
+      
+      switch (confirmationDialog.action) {
+        case 'confirmed':
+          notificationType = 'booking_confirmed';
+          title = 'Booking Confirmed';
+          message = `Your booking for ${formatDate(bookingData.booking_date)} at ${bookingData.booking_time} has been confirmed by the provider.`;
+          break;
+        case 'rejected':
+          notificationType = 'booking_rejected';
+          title = 'Booking Rejected';
+          message = `Your booking for ${formatDate(bookingData.booking_date)} at ${bookingData.booking_time} has been rejected by the provider.`;
+          break;
+        case 'completed':
+          notificationType = 'booking_completed';
+          title = 'Service Completed';
+          message = `Your booking for ${formatDate(bookingData.booking_date)} at ${bookingData.booking_time} has been completed by the provider. Please rate your experience!`;
+          break;
+        default:
+          notificationType = 'booking_updated';
+          title = 'Booking Updated';
+          message = `Your booking for ${formatDate(bookingData.booking_date)} at ${bookingData.booking_time} has been updated.`;
+      }
 
       console.log('🔔 [PROVIDER] Creating notification:', {
         user_id: bookingData.user_id,
@@ -586,6 +604,7 @@ const ProviderDashboard = () => {
         .from('user_notifications')
         .insert({
           user_id: bookingData.user_id,
+          booking_id: confirmationDialog.bookingId,
           notification_type: notificationType,
           title: title,
           message: message

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, MessageSquare, X } from "lucide-react";
+import { Bell, MessageSquare, X, CheckCircle, XCircle, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -19,6 +19,7 @@ interface Notification {
   title?: string;
   message?: string;
   request_id?: string;
+  booking_id?: string; // Added booking_id for booking notifications
   type: 'chat' | 'booking'; // To distinguish between chat and booking notifications
 }
 
@@ -174,6 +175,7 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
               title: notification.title,
               message: notification.message,
               notification_type: notification.notification_type,
+              booking_id: notification.booking_id,
               created_at: notification.created_at,
               is_read: notification.is_read,
               type: 'booking' as const
@@ -332,6 +334,7 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
               title: newNotification.title,
               message: newNotification.message,
               notification_type: newNotification.notification_type,
+              booking_id: newNotification.booking_id,
               created_at: newNotification.created_at,
               is_read: newNotification.is_read,
               type: 'booking' as const
@@ -559,6 +562,12 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                         {notification.type === 'chat' ? (
                           <MessageSquare className="w-4 h-4 text-primary" />
+                        ) : notification.notification_type === 'booking_confirmed' ? (
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                        ) : notification.notification_type === 'booking_rejected' ? (
+                          <XCircle className="w-4 h-4 text-red-600" />
+                        ) : notification.notification_type === 'booking_completed' ? (
+                          <CheckCircle className="w-4 h-4 text-blue-600" />
                         ) : (
                           <Bell className="w-4 h-4 text-primary" />
                         )}

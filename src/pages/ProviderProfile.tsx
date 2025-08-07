@@ -588,6 +588,17 @@ const ProviderProfile = () => {
       return;
     }
 
+    // Check if current user is logged in as a provider
+    const currentAccountType = localStorage.getItem('current_account_type');
+    if (currentAccountType === 'provider') {
+      toast({
+        title: "Access Restricted",
+        description: "Service providers cannot book services. Please switch to your user account to book services.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!provider) {
       toast({
         title: "Error",

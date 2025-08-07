@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Star, MapPin, Loader2, Navigation } from "lucide-react";
+import { Search, Filter, Star, MapPin, Loader2, Navigation, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,7 +67,14 @@ const Services = () => {
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [nearbyProviders, setNearbyProviders] = useState<ProviderWithLocation[]>([]);
   const [searchRadius, setSearchRadius] = useState(10); // km
+  const [currentAccountType, setCurrentAccountType] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Check current account type
+  useEffect(() => {
+    const accountType = localStorage.getItem('current_account_type');
+    setCurrentAccountType(accountType);
+  }, []);
 
   useEffect(() => {
     fetchProviders();
@@ -331,6 +338,27 @@ const Services = () => {
               Connect with verified professionals in your area for all your service needs
             </p>
           </div>
+
+          {/* Provider Notice */}
+          {currentAccountType === 'provider' && (
+            <div className="mb-6 md:mb-8">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-blue-800 font-medium text-sm md:text-base">
+                      You're browsing as a Service Provider
+                    </p>
+                    <p className="text-blue-600 text-xs md:text-sm">
+                      To book services, please switch to your user account in the navigation menu.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Location Permission */}
           {showLocationPermission && (
