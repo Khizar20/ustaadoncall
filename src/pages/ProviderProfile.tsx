@@ -701,7 +701,7 @@ const ProviderProfile = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="pt-24">
+        <div className="pt-32">
           <div className="container mx-auto px-6 lg:px-8 py-12">
             <div className="flex items-center justify-center">
               <div className="flex items-center gap-3">
@@ -719,7 +719,7 @@ const ProviderProfile = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="pt-24">
+        <div className="pt-32">
           <div className="container mx-auto px-6 lg:px-8 py-12">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-foreground mb-4">Provider Not Found</h1>
@@ -736,7 +736,7 @@ const ProviderProfile = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <div className="pt-24 pb-16">
+              <div className="pt-32 pb-16">
         <div className="container mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
             {/* Provider Info */}

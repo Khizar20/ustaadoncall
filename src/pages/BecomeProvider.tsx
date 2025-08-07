@@ -564,7 +564,7 @@ const BecomeProvider = () => {
       <Navigation />
       
       {/* Hero Section */}
-      <section className="pt-24 pb-16 bg-hero-gradient">
+      <section className="pt-32 pb-16 bg-hero-gradient">
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center">
             <h1 className="font-heading font-bold text-hero text-foreground mb-6">

@@ -678,7 +678,7 @@ const ProviderDashboard = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6 pt-24">
+      <div className="container mx-auto px-4 py-6 pt-32">
         {/* Mobile Navigation Tabs */}
         <div className="lg:hidden mb-6">
           <div className="flex overflow-x-auto space-x-2 pb-2">

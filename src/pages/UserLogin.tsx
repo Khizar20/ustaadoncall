@@ -13,12 +13,36 @@ import { useLanguageContext } from "@/contexts/LanguageContext";
 
 // Password hashing function (same as in registration)
 const hashPassword = async (password: string): Promise<string> => {
+  console.log("🔐 Hashing password process started");
+  console.log("   - Input password length:", password.length);
+  console.log("   - Input password:", password); // Be careful with this in production
+  
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
+  console.log("   - Encoded data length:", data.length);
+  
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  console.log("   - Hash buffer byte length:", hashBuffer.byteLength);
+  
   const hashArray = Array.from(new Uint8Array(hashBuffer));
+  console.log("   - Hash array length:", hashArray.length);
+  
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  console.log("   - Final hash hex length:", hashHex.length);
+  console.log("   - Final hash hex:", hashHex);
+  
   return hashHex;
+};
+
+// Test function for password hashing (for debugging)
+const testPasswordHashing = async (testPassword: string) => {
+  console.log("🧪 Testing password hashing with test password:", testPassword);
+  const hash1 = await hashPassword(testPassword);
+  const hash2 = await hashPassword(testPassword);
+  console.log("🧪 Hash 1:", hash1);
+  console.log("🧪 Hash 2:", hash2);
+  console.log("🧪 Hashes match:", hash1 === hash2);
+  return { hash1, hash2, match: hash1 === hash2 };
 };
 
 const UserLogin = () => {
@@ -53,6 +77,15 @@ const UserLogin = () => {
       navigate('/user-login', { replace: true });
     }
   }, [searchParams, toast, navigate]);
+
+  // Test password hashing on component mount (for debugging)
+  useEffect(() => {
+    const runHashTest = async () => {
+      console.log("🧪 Running password hash test on component mount...");
+      await testPasswordHashing("testpassword123");
+    };
+    runHashTest();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -152,34 +185,67 @@ const UserLogin = () => {
       if (error) {
         console.error("❌ Supabase Auth error:", error);
         
-        // Check if it's an email confirmation error
-        if (error.message.includes("Email not confirmed") || error.message.includes("Invalid login credentials")) {
-          // Try to get user info to check confirmation status
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', formData.email)
-            .single();
-
-          if (userData && !userError) {
-            console.log("✅ User exists in database but email not confirmed");
+        // Handle specific error cases more accurately
+        if (error.message.includes("Email not confirmed")) {
+          // This is a clear email confirmation error
+          console.log("❌ Email not confirmed error from Supabase");
+          toast({
+            title: "Email Not Confirmed",
+            description: "Please check your email and click the verification link. If you haven't received the email, check your spam folder or use the 'Resend Verification' button.",
+            variant: "destructive"
+          });
+          return;
+        } else if (error.message.includes("Invalid login credentials")) {
+          // This could be wrong password OR unconfirmed email
+          // We need to check the verification status properly
+          console.log("❌ Invalid login credentials - checking if it's a verification issue...");
+          
+          try {
+            const verificationStatus = await checkVerificationStatus(formData.email);
+            
+            if (!verificationStatus.exists) {
+              // User doesn't exist at all
+              toast({
+                title: "Account Not Found",
+                description: "No account found with this email. Please register first or check your email address.",
+                variant: "destructive"
+              });
+              return;
+            } else if (!verificationStatus.verified) {
+              // User exists but email is not confirmed
+              console.log("✅ User exists but email not confirmed");
             toast({
               title: "Email Not Confirmed",
               description: "Please check your email and click the verification link. If you haven't received the email, check your spam folder or use the 'Resend Verification' button.",
+                variant: "destructive"
+              });
+              return;
+            } else {
+              // User exists and is verified, so it's likely a wrong password
+              console.log("✅ User exists and is verified - likely wrong password");
+              toast({
+                title: "Invalid Credentials",
+                description: "Invalid email or password. Please check your credentials and try again.",
+                variant: "destructive"
+              });
+              return;
+            }
+          } catch (statusError) {
+            console.error("❌ Failed to check verification status:", statusError);
+            // Fallback to generic error message
+            toast({
+              title: "Login Failed",
+              description: "Invalid email or password. Please check your credentials and try again.",
               variant: "destructive"
             });
             return;
           }
         }
         
-        // Handle specific error messages for better user experience
+        // Handle other specific error messages
         let errorMessage = error.message;
-        if (error.message.includes("Invalid login credentials")) {
-          errorMessage = "Invalid email or password. Please check your credentials and try again.";
-        } else if (error.message.includes("User not found")) {
+        if (error.message.includes("User not found")) {
           errorMessage = "No account found with this email. Please register first or check your email address.";
-        } else if (error.message.includes("Email not confirmed")) {
-          errorMessage = "Please verify your email address before logging in. Check your email for the verification link.";
         }
         
         throw new Error(errorMessage);
@@ -190,30 +256,63 @@ const UserLogin = () => {
         
         // Check if user exists in users table and verify password hash
         console.log("🔄 Checking user profile in users table...");
+        console.log("🔍 Looking for user with ID:", data.user.id);
+        
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
           .eq('id', data.user.id)
           .single();
 
-        console.log("Users table query response:", { userData, userError });
+        console.log("📋 Users table query response:", { userData, userError });
 
         if (userError || !userData) {
           console.error("❌ Users table query error:", userError);
-          console.error("User data:", userData);
+          console.error("❌ User data:", userData);
           throw new Error("User profile not found. Please contact support.");
         }
 
-        console.log("✅ User profile found:", userData);
+        console.log("✅ User profile found successfully");
+        console.log("📊 User data details:");
+        console.log("   - User ID:", userData.id);
+        console.log("   - Email:", userData.email);
+        console.log("   - Name:", userData.name);
+        console.log("   - Has password_hash:", !!userData.password_hash);
+        console.log("   - Password hash preview:", userData.password_hash ? userData.password_hash.substring(0, 10) + '...' : 'null');
+        console.log("   - Email confirmed at:", userData.email_confirmed_at);
+        console.log("   - Created at:", userData.created_at);
 
-        // Verify password hash
+        // Verify password hash with detailed logging
         console.log("🔄 Verifying password hash...");
-        const hashedInputPassword = await hashPassword(formData.password);
-        console.log("Input password hash:", hashedInputPassword);
-        console.log("Stored password hash:", userData.password_hash);
+        console.log("📝 Input password length:", formData.password.length);
+        console.log("📝 Input password:", formData.password); // Be careful with this in production
         
+        const hashedInputPassword = await hashPassword(formData.password);
+        console.log("🔐 Generated hash from input password:", hashedInputPassword);
+        console.log("🔐 Stored password hash from database:", userData.password_hash);
+        console.log("📊 Hash comparison details:");
+        console.log("   - Input hash length:", hashedInputPassword.length);
+        console.log("   - Stored hash length:", userData.password_hash?.length || 'undefined');
+        console.log("   - Hashes match:", userData.password_hash === hashedInputPassword);
+        
+        // Additional debugging info
         if (userData.password_hash !== hashedInputPassword) {
-          console.error("❌ Password hash mismatch");
+          console.error("❌ Password hash mismatch details:");
+          console.error("   - Expected (stored):", userData.password_hash);
+          console.error("   - Received (input):", hashedInputPassword);
+          console.error("   - Character-by-character comparison:");
+          
+          if (userData.password_hash && hashedInputPassword) {
+            const maxLength = Math.max(userData.password_hash.length, hashedInputPassword.length);
+            for (let i = 0; i < maxLength; i++) {
+              const storedChar = userData.password_hash[i] || 'undefined';
+              const inputChar = hashedInputPassword[i] || 'undefined';
+              if (storedChar !== inputChar) {
+                console.error(`     Position ${i}: stored='${storedChar}' vs input='${inputChar}'`);
+              }
+            }
+          }
+          
           throw new Error("Invalid credentials. Please check your email and password.");
         }
 
@@ -365,57 +464,15 @@ const UserLogin = () => {
         };
       }
 
-      // Check if user is already verified in Supabase Auth
+      // Try to check if user exists in Supabase Auth by attempting to get user info
       console.log("🔄 Checking Supabase Auth verification status...");
       try {
-        // Try to sign in with the email to check if it's verified
-        const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: 'dummy-password-to-check-status' // This will fail but we can check the error
-        });
-
-        console.log("Sign-in attempt result:", { user, signInError });
-
-        if (signInError) {
-          // Check the error message to determine verification status
-          if (signInError.message.includes("Email not confirmed")) {
-            return { 
-              exists: true, 
-              verified: false, 
-              message: "Email verification is pending. You can resend the verification email." 
-            };
-          } else if (signInError.message.includes("Invalid login credentials")) {
-            // This means the email exists and is confirmed, but password is wrong
-            return { 
-              exists: true, 
-              verified: true, 
-              message: "This email is already verified in Supabase. You can log in with your password." 
-            };
-          } else if (signInError.message.includes("User not found")) {
-            return { 
-              exists: false, 
-              verified: false, 
-              message: "Email not found in authentication system. Please register first." 
-            };
-          }
-        } else if (user) {
-          // If sign-in succeeded (unlikely with dummy password), user is verified
-          return { 
-            exists: true, 
-            verified: true, 
-            message: "This email is already verified in Supabase. You can log in with your password." 
-          };
-        }
-      } catch (authCheckError) {
-        console.log("⚠️ Could not check Supabase Auth status:", authCheckError);
-      }
-
-      // Fallback: try to get user info from Supabase Auth admin API
-      try {
-        const { data: { users }, error: adminError } = await supabase.auth.admin.listUsers();
+        // Use the admin API to get user information if available
+        // Note: This might not work in client-side code due to RLS policies
+        const { data: authUsers, error: adminError } = await supabase.auth.admin.listUsers();
         
-        if (!adminError && users) {
-          const authUser = users.find(u => u.email === email);
+        if (!adminError && authUsers && authUsers.users) {
+          const authUser = authUsers.users.find(u => u.email === email);
           if (authUser) {
             console.log("✅ User found in Supabase Auth:", authUser.email);
             console.log("Email confirmed in Supabase:", authUser.email_confirmed_at);
@@ -424,7 +481,7 @@ const UserLogin = () => {
               return { 
                 exists: true, 
                 verified: true, 
-                message: "This email is already verified in Supabase. You can log in with your password." 
+                message: "This email is already verified. You can log in with your password." 
               };
             } else {
               return { 
@@ -433,11 +490,19 @@ const UserLogin = () => {
                 message: "Email verification is pending. You can resend the verification email." 
               };
             }
+          } else {
+            return { 
+              exists: false, 
+              verified: false, 
+              message: "Email not found in authentication system. Please register first." 
+            };
           }
         }
-      } catch (adminError) {
-        console.log("⚠️ Could not check Supabase Auth admin status:", adminError);
+      } catch (authCheckError) {
+        console.log("⚠️ Could not check Supabase Auth admin status:", authCheckError);
       }
+
+
 
       // If we can't determine status, assume pending
       return { 

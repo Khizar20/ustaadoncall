@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Star, MapPin, Loader2, Navigation, User } from "lucide-react";
+import { Search, Filter, Star, MapPin, Loader2, Navigation, User, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,14 +67,125 @@ const Services = () => {
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [nearbyProviders, setNearbyProviders] = useState<ProviderWithLocation[]>([]);
   const [searchRadius, setSearchRadius] = useState(10); // km
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userFavorites, setUserFavorites] = useState<Set<string>>(new Set());
   const [currentAccountType, setCurrentAccountType] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Check current account type
+  // Check user authentication and load favorites
   useEffect(() => {
-    const accountType = localStorage.getItem('current_account_type');
-    setCurrentAccountType(accountType);
+    const checkAuth = () => {
+      const storedUserInfo = localStorage.getItem('user_info');
+      const currentAccountType = localStorage.getItem('current_account_type');
+      
+      if (storedUserInfo) {
+        const userData = JSON.parse(storedUserInfo);
+        setCurrentUser(userData);
+      }
+      
+      setCurrentAccountType(currentAccountType);
+    };
+
+    checkAuth();
   }, []);
+
+  // Load user's favorites
+  useEffect(() => {
+    const loadFavorites = async () => {
+      if (!currentUser?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('user_favorites')
+          .select('provider_id')
+          .eq('user_id', currentUser.id);
+
+        if (error) throw error;
+
+        const favoriteIds = new Set(data?.map(fav => fav.provider_id) || []);
+        setUserFavorites(favoriteIds);
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
+    };
+
+    loadFavorites();
+  }, [currentUser?.id]);
+
+  // Toggle favorite function
+  const toggleFavorite = async (providerId: string, providerName: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!currentUser?.id) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to add providers to your favorites.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if current user is logged in as a provider
+    if (currentAccountType === 'provider') {
+      toast({
+        title: "Access Restricted",
+        description: "Service providers cannot add favorites. Please switch to your user account.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const isFavorited = userFavorites.has(providerId);
+
+      if (isFavorited) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('provider_id', providerId);
+
+        if (error) throw error;
+
+        setUserFavorites(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(providerId);
+          return newSet;
+        });
+        
+        toast({
+          title: "Removed from Favorites",
+          description: `${providerName} has been removed from your favorites.`,
+        });
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: currentUser.id,
+            provider_id: providerId
+          });
+
+        if (error) throw error;
+
+        setUserFavorites(prev => new Set([...prev, providerId]));
+        
+        toast({
+          title: "Added to Favorites",
+          description: `${providerName} has been added to your favorites.`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update favorites.",
+        variant: "destructive"
+      });
+    }
+  };
 
   useEffect(() => {
     fetchProviders();
@@ -310,7 +421,7 @@ const Services = () => {
     return (
       <div className="min-h-screen bg-background">
         <NavComponent />
-        <div className="pt-24">
+        <div className="pt-32">
           <div className="container mx-auto px-6 lg:px-8 py-12">
             <div className="flex items-center justify-center">
               <div className="flex items-center gap-3">
@@ -327,7 +438,7 @@ const Services = () => {
   return (
     <div className="min-h-screen bg-background">
       <NavComponent />
-      <div className="pt-24">
+              <div className="pt-32">
         <div className="container mx-auto px-6 lg:px-8 py-12">
           {/* Header */}
           <div className="text-center mb-8 md:mb-12">
@@ -452,8 +563,28 @@ const Services = () => {
                 {paginatedProviders.map((provider) => (
                   <Card
                     key={provider.id}
-                    className="group hover:shadow-lg transition-all duration-300 cursor-pointer"
+                    className="group hover:shadow-lg transition-all duration-300 cursor-pointer relative"
                   >
+                    {/* Heart Icon for Favorites */}
+                    {currentUser && currentAccountType !== 'provider' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`absolute top-2 right-2 z-10 h-8 w-8 p-0 rounded-full transition-all duration-200 ${
+                          userFavorites.has(provider.id)
+                            ? 'text-red-500 hover:text-red-600 bg-white hover:bg-red-50'
+                            : 'text-gray-400 hover:text-red-500 bg-white hover:bg-red-50'
+                        } shadow-sm`}
+                        onClick={(e) => toggleFavorite(provider.id, provider.name, e)}
+                      >
+                        <Heart 
+                          className={`w-4 h-4 ${
+                            userFavorites.has(provider.id) ? 'fill-current' : ''
+                          }`} 
+                        />
+                      </Button>
+                    )}
+                    
                     <Link to={`/provider/${provider.id}`}>
                       <div className="p-4 md:p-6">
                         <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">

@@ -40,7 +40,7 @@ const About = () => {
       <Navigation />
       
       {/* Hero Section */}
-      <section className="relative pt-24 pb-20">
+      <section className="relative pt-32 pb-20">
         <div 
           className="absolute inset-0 z-0"
           style={{

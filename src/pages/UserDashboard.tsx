@@ -369,6 +369,59 @@ const UserDashboard = () => {
     fetchBookings();
   }, [userInfo?.id, toast, checkForCompletedBookings]);
 
+  // Fetch user's favorite providers
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!userInfo?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('user_favorites')
+          .select(`
+            *,
+            providers (
+              id,
+              name,
+              service_category,
+              location,
+              rating,
+              profile_image,
+              is_verified
+            )
+          `)
+          .eq('user_id', userInfo.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        // Transform the data to match our FavoriteProvider interface
+        const transformedFavorites = (data || []).map((fav: any) => ({
+          id: fav.providers.id,
+          name: fav.providers.name,
+          service_category: fav.providers.service_category,
+          rating: fav.providers.rating || 0,
+          location: fav.providers.location,
+          profile_image: fav.providers.profile_image,
+          is_verified: fav.providers.is_verified,
+          favorited_at: fav.created_at
+        }));
+
+        setFavorites(transformedFavorites);
+      } catch (error: any) {
+        console.error('Error fetching favorites:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load your favorite providers.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    fetchFavorites();
+  }, [userInfo?.id, toast]);
+
   // Fetch existing reviews to initialize reviewedBookings state
   useEffect(() => {
     const fetchExistingReviews = async () => {
@@ -562,21 +615,55 @@ const UserDashboard = () => {
     }
   };
 
-  const handleProfileUpdate = async (updatedData: Partial<UserInfo>) => {
+  const handleProfileUpdate = async (updatedData: Partial<UserInfo> & { newPassword?: string; currentPassword?: string }) => {
     try {
-      const { error } = await supabase
+      const { newPassword, currentPassword, ...profileData } = updatedData;
+      
+      // Update profile information
+      const { error: profileError } = await supabase
         .from('users')
-        .update(updatedData)
+        .update(profileData)
         .eq('id', userInfo?.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      setUserInfo(prev => prev ? { ...prev, ...updatedData } : null);
+      // Handle password change if provided
+      if (newPassword && currentPassword) {
+        try {
+          const { error: passwordError } = await supabase.auth.updateUser({
+            password: newPassword
+          });
+
+          if (passwordError) {
+            // If password update fails, still show success for profile update but warn about password
+            toast({
+              title: "Profile Updated",
+              description: "Profile updated successfully, but password change failed. Please try changing your password again.",
+              variant: "default"
+            });
+          } else {
+            toast({
+              title: "Profile & Password Updated",
+              description: "Your profile and password have been updated successfully.",
+            });
+          }
+        } catch (passwordError: any) {
+          toast({
+            title: "Profile Updated",
+            description: "Profile updated successfully, but password change failed. Please try changing your password again.",
+            variant: "default"
+          });
+        }
+      } else {
+        toast({
+          title: "Profile Updated",
+          description: "Your profile has been updated successfully.",
+        });
+      }
+
+      // Update local state
+      setUserInfo(prev => prev ? { ...prev, ...profileData } : null);
       setIsEditingProfile(false);
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
-      });
     } catch (error: any) {
       toast({
         title: "Update Failed",
@@ -584,6 +671,85 @@ const UserDashboard = () => {
         variant: "destructive"
       });
     }
+  };
+
+  // Handle adding/removing favorites
+  const toggleFavorite = async (providerId: string, providerName: string) => {
+    if (!userInfo?.id) return;
+
+    try {
+      // Check if provider is already favorited
+      const isFavorited = favorites.some(fav => fav.id === providerId);
+
+      if (isFavorited) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', userInfo.id)
+          .eq('provider_id', providerId);
+
+        if (error) throw error;
+
+        // Update local state
+        setFavorites(prev => prev.filter(fav => fav.id !== providerId));
+        
+        toast({
+          title: "Removed from Favorites",
+          description: `${providerName} has been removed from your favorites.`,
+        });
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: userInfo.id,
+            provider_id: providerId
+          });
+
+        if (error) throw error;
+
+        // Fetch provider details to add to local state
+        const { data: providerData, error: providerError } = await supabase
+          .from('providers')
+          .select('id, name, service_category, location, rating, profile_image, is_verified')
+          .eq('id', providerId)
+          .single();
+
+        if (providerError) throw providerError;
+
+        const newFavorite = {
+          id: providerData.id,
+          name: providerData.name,
+          service_category: providerData.service_category,
+          rating: providerData.rating || 0,
+          location: providerData.location,
+          profile_image: providerData.profile_image,
+          is_verified: providerData.is_verified,
+          favorited_at: new Date().toISOString()
+        };
+
+        // Update local state
+        setFavorites(prev => [newFavorite, ...prev]);
+        
+        toast({
+          title: "Added to Favorites",
+          description: `${providerName} has been added to your favorites.`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update favorites.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Check if a provider is favorited
+  const isProviderFavorited = (providerId: string) => {
+    return favorites.some(fav => fav.id === providerId);
   };
 
   const formatDate = (dateString: string) => {
@@ -698,7 +864,7 @@ const UserDashboard = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6 pt-24">
+      <div className="container mx-auto px-4 py-6 pt-32">
         {/* Mobile Navigation Tabs */}
         <div className="lg:hidden mb-6">
           <div className="flex overflow-x-auto space-x-2 pb-2">
@@ -1077,10 +1243,97 @@ const UserDashboard = () => {
                 className="space-y-6"
               >
                 <div>
-                  <h2 className="text-3xl font-bold mb-2">Favorite Providers</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-2">Favorite Providers</h2>
                   <p className="text-muted-foreground">Your saved service providers</p>
                 </div>
-                {/* Favorites content */}
+
+                {favorites.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Favorites Yet</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Start adding service providers to your favorites by clicking the heart icon on their cards!
+                      </p>
+                      <Button asChild>
+                        <Link to="/services">Browse Services</Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                    {favorites.map((favorite) => (
+                      <Card key={favorite.id} className="group hover:shadow-lg transition-all duration-300">
+                        <CardContent className="p-4 md:p-6">
+                          <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
+                            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              {favorite.profile_image ? (
+                                <img
+                                  src={favorite.profile_image}
+                                  alt={favorite.name}
+                                  className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <span className="text-lg md:text-2xl font-bold text-primary">
+                                    {favorite.name.charAt(0)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between mb-1">
+                                <h3 className="font-semibold text-sm md:text-base truncate pr-2">
+                                  {favorite.name}
+                                  {favorite.is_verified && (
+                                    <span className="ml-1 text-blue-500">✓</span>
+                                  )}
+                                </h3>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    toggleFavorite(favorite.id, favorite.name);
+                                  }}
+                                >
+                                  <Heart className="w-4 h-4 fill-current" />
+                                </Button>
+                              </div>
+                              <p className="text-xs md:text-sm text-muted-foreground mb-2">
+                                {favorite.service_category}
+                              </p>
+                              <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-2">
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-3 h-3 md:w-4 md:h-4 fill-yellow-400 text-yellow-400" />
+                                  <span>{favorite.rating.toFixed(1)}</span>
+                                </div>
+                                <span>•</span>
+                                <div className="flex items-center gap-1 truncate">
+                                  <MapPin className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                                  <span className="truncate">{favorite.location}</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Added on {new Date(favorite.favorited_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button asChild size="sm" className="flex-1">
+                              <Link to={`/provider/${favorite.id}`}>
+                                <Eye className="w-4 h-4 mr-1" />
+                                View Profile
+                              </Link>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1104,17 +1357,39 @@ const UserDashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-3xl font-bold mb-2">Profile</h2>
+                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Profile</h2>
                     <p className="text-muted-foreground">Manage your personal information</p>
                   </div>
-                  <Button onClick={() => setIsEditingProfile(!isEditingProfile)}>
+                  <Button onClick={() => setIsEditingProfile(!isEditingProfile)} className="w-full sm:w-auto">
                     <Edit className="w-4 h-4 mr-2" />
                     {isEditingProfile ? 'Cancel' : 'Edit Profile'}
                   </Button>
                 </div>
-                {/* Profile content */}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Personal Information</CardTitle>
+                    <CardDescription>
+                      {isEditingProfile 
+                        ? "Update your personal details below. Email cannot be changed." 
+                        : "Your current personal information"
+                      }
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isEditingProfile ? (
+                      <ProfileEditForm
+                        userInfo={userInfo}
+                        onSave={handleProfileUpdate}
+                        onCancel={() => setIsEditingProfile(false)}
+                      />
+                    ) : (
+                      <ProfileView userInfo={userInfo} />
+                    )}
+                  </CardContent>
+                </Card>
               </motion.div>
             )}
 
@@ -1221,22 +1496,31 @@ const UserDashboard = () => {
 
 // Profile View Component
 const ProfileView = ({ userInfo }: { userInfo: UserInfo }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-      <p className="text-lg">{userInfo.name}</p>
+  <div className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+        <p className="text-base md:text-lg font-medium">{userInfo.name}</p>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">Email</label>
+        <div className="flex items-center gap-2">
+          <p className="text-base md:text-lg">{userInfo.email}</p>
+          <Badge variant="secondary" className="text-xs">Cannot be changed</Badge>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">Phone</label>
+        <p className="text-base md:text-lg">{userInfo.phone}</p>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">Member Since</label>
+        <p className="text-base md:text-lg">{new Date(userInfo.created_at).toLocaleDateString()}</p>
+      </div>
     </div>
-    <div>
-      <label className="text-sm font-medium text-muted-foreground">Email</label>
-      <p className="text-lg">{userInfo.email}</p>
-    </div>
-    <div>
-      <label className="text-sm font-medium text-muted-foreground">Phone</label>
-      <p className="text-lg">{userInfo.phone}</p>
-    </div>
-    <div>
+    <div className="space-y-2">
       <label className="text-sm font-medium text-muted-foreground">Address</label>
-      <p className="text-lg">{userInfo.address}</p>
+      <p className="text-base md:text-lg">{userInfo.address}</p>
     </div>
   </div>
 );
@@ -1248,7 +1532,7 @@ const ProfileEditForm = ({
   onCancel 
 }: { 
   userInfo: UserInfo; 
-  onSave: (data: Partial<UserInfo>) => void; 
+  onSave: (data: Partial<UserInfo> & { newPassword?: string; currentPassword?: string }) => void; 
   onCancel: () => void;
 }) => {
   const [formData, setFormData] = useState({
@@ -1256,50 +1540,220 @@ const ProfileEditForm = ({
     phone: userInfo.phone,
     address: userInfo.address
   });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const { toast } = useToast();
+
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = [];
+    if (password.length < 8) {
+      errors.push('Password must be at least 8 characters long');
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+      errors.push('Password must contain at least one number');
+    }
+    return errors;
+  };
+
+  const handlePasswordChange = (field: string, value: string) => {
+    setPasswordData(prev => ({ ...prev, [field]: value }));
+    
+    if (field === 'newPassword') {
+      setPasswordErrors(validatePassword(value));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Validate password if changing
+    if (showPasswordSection && passwordData.newPassword) {
+      if (passwordErrors.length > 0) {
+        toast({
+          title: "Password Error",
+          description: "Please fix password requirements before saving.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        toast({
+          title: "Password Mismatch",
+          description: "New password and confirmation don't match.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!passwordData.currentPassword) {
+        toast({
+          title: "Current Password Required",
+          description: "Please enter your current password to change it.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    // Include password data if changing password
+    const updateData = {
+      ...formData,
+      ...(showPasswordSection && passwordData.newPassword ? {
+        newPassword: passwordData.newPassword,
+        currentPassword: passwordData.currentPassword
+      } : {})
+    };
+    
+    onSave(updateData);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Basic Information */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Basic Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              value={userInfo.email}
+              disabled
+              className="w-full bg-muted"
+            />
+            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+          </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone</Label>
+          <Label htmlFor="phone">Phone Number *</Label>
           <Input
             id="phone"
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             required
+            className="w-full"
+            placeholder="e.g., +92 300 1234567"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="address">Address *</Label>
+          <Textarea
+            id="address"
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            rows={3}
+            required
+            className="w-full resize-none"
+            placeholder="Enter your complete address..."
           />
         </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="address">Address</Label>
-        <Textarea
-          id="address"
-          value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          rows={3}
-          required
-        />
+
+      {/* Password Section */}
+      <div className="space-y-4 border-t pt-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Password</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setShowPasswordSection(!showPasswordSection);
+              if (!showPasswordSection) {
+                setPasswordData({
+                  currentPassword: '',
+                  newPassword: '',
+                  confirmPassword: ''
+                });
+                setPasswordErrors([]);
+              }
+            }}
+          >
+            {showPasswordSection ? 'Cancel Password Change' : 'Change Password'}
+          </Button>
+        </div>
+        
+        {showPasswordSection && (
+          <div className="space-y-4 bg-muted/30 p-4 rounded-lg">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password *</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={passwordData.currentPassword}
+                onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
+                required
+                className="w-full"
+                placeholder="Enter your current password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password *</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={passwordData.newPassword}
+                onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                required
+                className="w-full"
+                placeholder="Enter your new password"
+              />
+              {passwordErrors.length > 0 && (
+                <div className="text-sm text-red-600 space-y-1">
+                  {passwordErrors.map((error, index) => (
+                    <p key={index}>• {error}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password *</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={passwordData.confirmPassword}
+                onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                required
+                className="w-full"
+                placeholder="Confirm your new password"
+              />
+              {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
+                <p className="text-sm text-red-600">Passwords don't match</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-      <div className="flex gap-2">
-        <Button type="submit">
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+        <Button type="submit" className="flex-1 sm:flex-none">
           <Save className="w-4 h-4 mr-2" />
           Save Changes
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} className="flex-1 sm:flex-none">
           <X className="w-4 h-4 mr-2" />
           Cancel
         </Button>
