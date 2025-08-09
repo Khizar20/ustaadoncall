@@ -181,6 +181,7 @@ export const coreTranslations: TranslationKey = {
   "Info": { en: "Info", ur: "معلومات" },
   "Loading": { en: "Loading", ur: "لوڈ ہو رہا ہے" },
   "Please Wait": { en: "Please Wait", ur: "براہ کرم انتظار کریں" },
+  "24/7": { en: "24/7", ur: "24/7" },
 
   // Time and date
   "Today": { en: "Today", ur: "آج" },

@@ -252,7 +252,7 @@ const UserRegister = () => {
   // Show success state if registration was successful
   if (isVerificationSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-background">
         {/* Header Navigation */}
         <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
           <div className="container mx-auto px-4">
@@ -306,11 +306,11 @@ const UserRegister = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-700">
+                <div className="p-4 bg-secondary rounded-lg">
+                  <p className="text-sm text-muted-foreground">
                     <strong>{t("Next Steps:")}</strong>
                   </p>
-                  <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                  <ul className="text-sm text-muted-foreground mt-2 space-y-1">
                     <li>• {t("Check your email for verification link")}</li>
                     <li>• {t("Click the verification link to activate your account")}</li>
                     <li>• {t("Once verified, you can log in to your account")}</li>
@@ -333,7 +333,7 @@ const UserRegister = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-background">
       {/* Header Navigation */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="container mx-auto px-4">
@@ -546,8 +546,8 @@ const UserRegister = () => {
               </p>
             </div>
 
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700">
+            <div className="mt-4 p-3 bg-secondary rounded-lg">
+              <p className="text-xs text-muted-foreground">
                 <strong>{t("Security Notice:")}</strong> {t("Your account will be verified via email before you can access our services.")}
               </p>
             </div>

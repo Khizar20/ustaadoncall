@@ -34,7 +34,7 @@ const TestLocationAutocomplete = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-500" />
+                <MapPin className="h-5 w-5 text-primary" />
                 Google Maps Autocomplete Test
               </CardTitle>
             </CardHeader>

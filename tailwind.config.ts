@@ -64,8 +64,9 @@ export default {
 				}
 			},
 			fontFamily: {
-				'heading': ['Poppins', 'system-ui', 'sans-serif'],
-				'body': ['Poppins', 'system-ui', 'sans-serif'],
+				// Prefer Formular, fall back to Poppins for punctuation via unicode-range
+				'heading': ['Formular', 'Poppins', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
+				'body': ['Formular', 'Poppins', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
 			},
 			fontSize: {
 				'hero': ['clamp(3rem, 8vw, 6rem)', { lineHeight: '0.9' }],

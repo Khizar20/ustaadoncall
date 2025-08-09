@@ -111,7 +111,7 @@ const AdminPanel = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/admin/me", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/me`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -146,7 +146,7 @@ const AdminPanel = () => {
   const fetchPendingRequests = async () => {
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch("http://localhost:8000/pending-requests/", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pending-requests/`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -168,7 +168,7 @@ const AdminPanel = () => {
   const fetchProviders = async () => {
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch("http://localhost:8000/providers/", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/providers/`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -188,7 +188,7 @@ const AdminPanel = () => {
   const handleLogout = async () => {
     try {
       const token = localStorage.getItem("admin_token");
-      await fetch("http://localhost:8000/admin/logout", {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/logout`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -251,7 +251,7 @@ const AdminPanel = () => {
     setIsUpdating(true);
     try {
       const token = localStorage.getItem("admin_token");
-      const response = await fetch(`http://localhost:8000/pending-requests/${requestId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pending-requests/${requestId}`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
@@ -363,7 +363,7 @@ const AdminPanel = () => {
       pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
       approved: { color: "bg-green-100 text-green-800", icon: CheckCircle },
       rejected: { color: "bg-red-100 text-red-800", icon: XCircle },
-      under_review: { color: "bg-blue-100 text-blue-800", icon: Eye }
+      under_review: { color: "bg-secondary text-secondary-foreground", icon: Eye }
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
@@ -451,9 +451,9 @@ const AdminPanel = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Total Providers</p>
-                        <p className="text-2xl font-bold text-blue-600">{providers.length}</p>
+                        <p className="text-2xl font-bold text-primary">{providers.length}</p>
                       </div>
-                      <User className="h-8 w-8 text-blue-600" />
+                      <User className="h-8 w-8 text-primary" />
                     </div>
                   </CardContent>
                 </Card>

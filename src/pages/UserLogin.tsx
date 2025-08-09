@@ -525,7 +525,7 @@ const UserLogin = () => {
 
   if (isResetSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -570,7 +570,7 @@ const UserLogin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-background">
       {/* Header Navigation */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="container mx-auto px-4">
@@ -728,8 +728,8 @@ const UserLogin = () => {
               </p>
             </div>
 
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700">
+            <div className="mt-4 p-3 bg-secondary rounded-lg">
+              <p className="text-xs text-muted-foreground">
                 <strong>Need Help?</strong> Contact our support team if you're having trouble accessing your account.
               </p>
             </div>

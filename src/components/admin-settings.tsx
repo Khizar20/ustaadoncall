@@ -82,7 +82,7 @@ const AdminSettings = ({ adminInfo, onUpdate }: AdminSettingsProps) => {
         updateData.new_password = formData.new_password;
       }
 
-      const response = await fetch("http://localhost:8000/admin/me", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

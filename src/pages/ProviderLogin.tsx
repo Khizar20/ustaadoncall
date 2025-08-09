@@ -95,7 +95,7 @@ const ProviderLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-background">
       {/* Header Navigation */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="container mx-auto px-4">
@@ -225,8 +225,8 @@ const ProviderLogin = () => {
                 </p>
               </div>
 
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-xs text-blue-700">
+              <div className="mt-4 p-3 bg-secondary rounded-lg">
+                <p className="text-xs text-muted-foreground">
                   <strong>Session Information:</strong> Your login session will remain active until you manually log out.
                 </p>
               </div>

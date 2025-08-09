@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -38,13 +39,43 @@ const Contact = () => {
       <Navigation />
       
       {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-hero-gradient">
-        <div className="container mx-auto px-6 lg:px-8">
+      <section className="pt-32 pb-16 relative overflow-hidden" style={{ backgroundColor: '#FCFAF8' }}>
+        <div className="container mx-auto px-6 lg:px-8 relative">
+          {/* Decorative animated shapes */}
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute -z-10 inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+          >
+            {/* Subtle animated SVG grid */}
+            <svg className="absolute inset-0 w-full h-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="gridContact" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#gridContact)" />
+            </svg>
+            <motion.div
+              className="absolute right-10 top-10 w-40 h-40 rounded-full blur-3xl"
+              style={{ background: 'radial-gradient(circle at 30% 30%, hsla(22,65%,45%,0.35), transparent 60%)' }}
+              animate={{ y: [0, -10, 0], x: [0, 10, 0] }}
+              transition={{ repeat: Infinity, duration: 12 }}
+            />
+            <motion.div
+              className="absolute left-0 bottom-10 w-56 h-56 rounded-full blur-3xl"
+              style={{ background: 'radial-gradient(circle at 70% 70%, hsla(22,65%,45%,0.25), transparent 60%)' }}
+              animate={{ y: [0, 12, 0], x: [0, -8, 0] }}
+              transition={{ repeat: Infinity, duration: 14 }}
+            />
+          </motion.div>
           <div className="text-center">
-            <h1 className="font-heading font-bold text-display text-foreground mb-4">
+            <h1 className="font-heading font-light text-display text-foreground mb-4">
               Get In Touch
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               We're here to help. Reach out to us for support, partnerships, or any questions about our services.
             </p>
           </div>
@@ -55,7 +86,9 @@ const Contact = () => {
         <div className="container mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Form */}
-            <Card className="p-8 border-border bg-card">
+            <div className="relative group">
+              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+              <Card className="relative p-8 border-border bg-card hover:shadow-elegant transition-shadow">
               <h2 className="font-heading font-bold text-2xl text-foreground mb-6">
                 Send us a Message
               </h2>
@@ -130,8 +163,9 @@ const Contact = () => {
                   <Send className="mr-2 h-4 w-4" />
                   Send Message
                 </Button>
-              </form>
-            </Card>
+                </form>
+              </Card>
+            </div>
 
             {/* Contact Information */}
             <div className="space-y-8">
@@ -145,7 +179,9 @@ const Contact = () => {
               </div>
 
               <div className="space-y-6">
-                <Card className="p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
+                <div className="relative group">
+                  <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                  <Card className="relative p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
                   <div className="flex items-start space-x-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Phone className="h-6 w-6 text-primary" />
@@ -156,9 +192,12 @@ const Contact = () => {
                       <p className="font-medium text-primary">+92 3180542026</p>
                     </div>
                   </div>
-                </Card>
+                  </Card>
+                </div>
 
-                <Card className="p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
+                <div className="relative group">
+                  <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                  <Card className="relative p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
                   <div className="flex items-start space-x-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Mail className="h-6 w-6 text-primary" />
@@ -169,11 +208,14 @@ const Contact = () => {
                       <p className="font-medium text-primary">hello@ustaadonca­ll.com</p>
                     </div>
                   </div>
-                </Card>
+                  </Card>
+                </div>
 
 
 
-                <Card className="p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
+                <div className="relative group">
+                  <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                  <Card className="relative p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
                   <div className="flex items-start space-x-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Clock className="h-6 w-6 text-primary" />
@@ -188,7 +230,8 @@ const Contact = () => {
                       </div>
                     </div>
                   </div>
-                </Card>
+                  </Card>
+                </div>
               </div>
             </div>
           </div>
@@ -199,7 +242,7 @@ const Contact = () => {
       <section className="py-16 bg-card">
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="font-heading font-bold text-display text-foreground mb-4">
+            <h2 className="font-heading font-light text-display text-foreground mb-4">
               Frequently Asked Questions
             </h2>
             <p className="text-xl text-muted-foreground">

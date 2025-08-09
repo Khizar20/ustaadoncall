@@ -32,7 +32,7 @@ const BidCard = ({
       case 'withdrawn':
         return 'text-gray-600 bg-gray-50 border-gray-200';
       default:
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-primary bg-primary/10 border-primary/30';
     }
   };
 
@@ -43,7 +43,7 @@ const BidCard = ({
       case 'rejected':
         return <XCircle className="h-4 w-4 text-red-600" />;
       default:
-        return <Clock className="h-4 w-4 text-blue-600" />;
+        return <Clock className="h-4 w-4 text-primary" />;
     }
   };
 

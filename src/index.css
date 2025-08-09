@@ -1,3 +1,6 @@
+/* Import custom Formular font family */
+@import '../font/style.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,41 +9,41 @@
 
 @layer base {
   :root {
-    /* Fiverr-inspired color scheme */
-    --background: 0 0% 100%; /* Pure white #FFFFFF */
-    --foreground: 240 10% 3.9%; /* Dark gray #0A0A0A */
+    /* Minimal beige palette */
+    --background: 40 33% 96%; /* soft beige #F7F1E8 */
+    --foreground: 24 15% 12%; /* deep warm gray */
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card: 40 33% 98%;
+    --card-foreground: 24 15% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 40 33% 98%;
+    --popover-foreground: 24 15% 12%;
 
-    --primary: 160 84% 39%; /* Fiverr green #1dbf73 */
+    --primary: 22 65% 45%; /* warm accent */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4.8% 95.9%; /* Light gray #F5F5F5 */
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 40 30% 92%;
+    --secondary-foreground: 24 20% 18%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 40 25% 90%;
+    --muted-foreground: 24 10% 40%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 40 25% 90%;
+    --accent-foreground: 24 20% 18%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 160 84% 39%;
+    --border: 30 20% 85%;
+    --input: 30 20% 85%;
+    --ring: 22 65% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0.6rem;
     
     /* Custom design tokens */
-    --hero-gradient: linear-gradient(135deg, #1dbf73, #19a366);
-    --soft-glow: 0 10px 40px hsl(160 84% 39% / 0.1);
-    --elegant-shadow: 0 8px 32px hsl(240 10% 3.9% / 0.1);
+    --hero-gradient: linear-gradient(135deg, hsl(var(--primary)), hsl(22 65% 52%));
+    --soft-glow: 0 10px 40px hsl(22 65% 45% / 0.12);
+    --elegant-shadow: 0 8px 32px hsl(24 10% 10% / 0.12);
     --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
@@ -110,9 +113,20 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body font-light;
     overflow-x: hidden;
   }
+
+  /* Ensure headings use the heading font by default */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-light;
+  }
+
+  /* Depth and glass utilities */
+  .shadow-elegant { box-shadow: var(--elegant-shadow); }
+  .glass-panel { @apply bg-white/70 backdrop-blur-xl border border-white/40; }
+  .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
+  .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 40px hsl(240 10% 3.9% / 0.12); }
 
   /* Enhanced button hover effects */
   .hover-glow {

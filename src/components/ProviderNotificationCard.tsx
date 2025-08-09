@@ -139,7 +139,7 @@ const ProviderNotificationCard = ({
           
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-blue-500" />
+              <MapPin className="h-4 w-4 text-primary" />
               <span className="text-gray-600">Location:</span>
               <span className="font-medium">{notification.live_requests.preferred_location}</span>
             </div>

@@ -742,7 +742,9 @@ const ProviderProfile = () => {
             {/* Provider Info */}
             <div className="lg:col-span-2 space-y-6 md:space-y-8">
               {/* Profile Header */}
-              <Card className="p-4 md:p-8 border-border bg-card">
+              <div className="relative group">
+                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                <Card className="relative p-4 md:p-8 border-border bg-card hover:shadow-elegant transition-shadow">
                 <div className="flex flex-col md:flex-row gap-4 md:gap-6">
                   <img
                     src={provider.profile_image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face"}
@@ -782,11 +784,14 @@ const ProviderProfile = () => {
                     </p>
                   </div>
                 </div>
-              </Card>
+                </Card>
+              </div>
 
               {/* Interactive Location Map */}
               {provider.latitude && provider.longitude && (
-                <Card className="p-4 md:p-8 border-border bg-card">
+              <div className="relative group">
+                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                <Card className="relative p-4 md:p-8 border-border bg-card hover:shadow-elegant transition-shadow">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                     <h2 className="text-xl md:text-2xl font-bold text-foreground">Location</h2>
                     {distance !== null && (
@@ -828,27 +833,36 @@ const ProviderProfile = () => {
                     </div>
                   </div>
                 </Card>
+              </div>
               )}
 
               {/* About Section */}
               {provider.bio && (
-                <Card className="p-4 md:p-8 border-border bg-card">
+              <div className="relative group">
+                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                <Card className="relative p-4 md:p-8 border-border bg-card hover:shadow-elegant transition-shadow">
                   <h2 className="text-xl md:text-2xl font-bold text-foreground mb-3 md:mb-4">About</h2>
                   <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{provider.bio}</p>
                 </Card>
+              </div>
               )}
 
               {/* Services & Pricing */}
               {!provider.jobs_pricing || Object.keys(provider.jobs_pricing).length === 0 ? (
-                <Card className="p-4 md:p-8 border-border bg-card">
+                <div className="relative group">
+                  <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                  <Card className="relative p-4 md:p-8 border-border bg-card hover:shadow-elegant transition-shadow">
                   <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">Services & Pricing</h2>
                   <div className="text-center py-6 md:py-8">
                     <p className="text-sm md:text-base text-muted-foreground">No services and pricing information available.</p>
                     <p className="text-xs md:text-sm text-muted-foreground mt-2">This provider hasn't set up their services yet.</p>
                   </div>
-                </Card>
+                  </Card>
+                </div>
               ) : (
-                <Card className="p-4 md:p-8 border-border bg-card">
+                <div className="relative group">
+                  <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                  <Card className="relative p-4 md:p-8 border-border bg-card hover:shadow-elegant transition-shadow">
                   <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">Services & Pricing</h2>
                   <div className="space-y-6">
                                         {Object.entries(provider.jobs_pricing).map(([category, services]) => (
@@ -882,11 +896,14 @@ const ProviderProfile = () => {
                       </div>
                     ))}
                   </div>
-                </Card>
+                  </Card>
+                </div>
               )}
 
               {/* Reviews Section */}
-              <Card className="p-8 border-border bg-card">
+              <div className="relative group">
+                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                <Card className="relative p-8 border-border bg-card hover:shadow-elegant transition-shadow">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-foreground">Reviews & Ratings</h2>
                   <div className="flex items-center gap-2">
@@ -964,10 +981,13 @@ const ProviderProfile = () => {
                   </div>
                 )}
               </Card>
+              </div>
 
               {/* Booking Section */}
               {!hasBooked && (
-                <Card className="p-8 border-border bg-card">
+                <div className="relative group">
+                  <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                  <Card className="relative p-8 border-border bg-card hover:shadow-elegant transition-shadow">
                   <h2 className="text-2xl font-bold text-foreground mb-6">Book Appointment</h2>
                   
                   {/* Date and Time Selection */}
@@ -1038,24 +1058,30 @@ const ProviderProfile = () => {
                     )}
                   </Button>
                 </Card>
+                </div>
               )}
 
               {/* Already Booked Message */}
               {hasBooked && (
-                <Card className="p-8 border-border bg-card">
+                <div className="relative group">
+                  <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                  <Card className="relative p-8 border-border bg-card hover:shadow-elegant transition-shadow">
                   <div className="text-center">
                     <CheckCircle className="h-12 w-12 text-primary mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-foreground mb-2">Already Booked</h3>
                     <p className="text-muted-foreground">You have already booked this provider.</p>
                   </div>
                 </Card>
+                </div>
               )}
             </div>
 
             {/* Sidebar */}
             <div className="space-y-4 md:space-y-6">
               {/* Contact Card */}
-              <Card className="p-4 md:p-6 border-border bg-card">
+              <div className="relative group">
+                <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                <Card className="relative p-4 md:p-6 border-border bg-card hover:shadow-elegant transition-shadow">
                 <h3 className="text-base md:text-lg font-semibold text-foreground mb-3 md:mb-4">Contact</h3>
                 
                 <div className="space-y-3 md:space-y-4">
@@ -1114,10 +1140,13 @@ const ProviderProfile = () => {
                   )}
                 </div>
               </Card>
+              </div>
 
               {/* Verification Badge */}
               {provider.is_verified && (
-                <Card className="p-4 md:p-6 border-border bg-card">
+                <div className="relative group">
+                  <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                  <Card className="relative p-4 md:p-6 border-border bg-card hover:shadow-elegant transition-shadow">
                   <div className="flex items-center gap-2 md:gap-3">
                     <Shield className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                     <div>
@@ -1126,10 +1155,13 @@ const ProviderProfile = () => {
                     </div>
                   </div>
                 </Card>
+                </div>
               )}
 
               {/* Quick Stats */}
-              <Card className="p-4 md:p-6 border-border bg-card">
+              <div className="relative group">
+                <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                <Card className="relative p-4 md:p-6 border-border bg-card hover:shadow-elegant transition-shadow">
                 <h3 className="text-base md:text-lg font-semibold text-foreground mb-3 md:mb-4">Quick Stats</h3>
                 <div className="space-y-2 md:space-y-3">
                   <div className="flex justify-between">
@@ -1158,6 +1190,7 @@ const ProviderProfile = () => {
                   )}
                 </div>
               </Card>
+              </div>
             </div>
           </div>
         </div>

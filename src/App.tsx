@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import GlobalCursor from "@/components/GlobalCursor";
 import Index from "./pages/Index";
 import Services from "./pages/Services";
 import About from "./pages/About";
@@ -182,6 +183,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <GlobalCursor />
           <AnimatedRoutes />
         </BrowserRouter>
       </TooltipProvider>

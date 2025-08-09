@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import LocationPermission from "@/components/LocationPermission";
 import InteractiveGoogleMap from "@/components/InteractiveGoogleMap";
 import MapErrorBoundary from "@/components/MapErrorBoundary";
+import { motion } from "framer-motion";
 import { useLanguageContext } from "@/contexts/LanguageContext";
 
 import { 
@@ -293,7 +294,7 @@ const Services = () => {
     try {
       setIsLoadingNearby(true);
       
-      const response = await fetch("http://localhost:8000/providers/nearby", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/providers/nearby`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -453,16 +454,16 @@ const Services = () => {
           {/* Provider Notice */}
           {currentAccountType === 'provider' && (
             <div className="mb-6 md:mb-8">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-secondary border border-border rounded-lg p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-blue-600" />
+                  <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-blue-800 font-medium text-sm md:text-base">
+                    <p className="text-foreground font-medium text-sm md:text-base">
                       You're browsing as a Service Provider
                     </p>
-                    <p className="text-blue-600 text-xs md:text-sm">
+                    <p className="text-muted-foreground text-xs md:text-sm">
                       To book services, please switch to your user account in the navigation menu.
                     </p>
                   </div>
@@ -527,20 +528,21 @@ const Services = () => {
 
           {/* Interactive Map */}
           <div className="mb-8">
-            <MapErrorBoundary onRetry={handleRefreshLocation}>
-              <InteractiveGoogleMap
-                userLocation={userLocation}
-                providers={filteredProviders}
-                onRefreshLocation={handleRefreshLocation}
-                isLoading={isLoadingNearby}
-                selectedServiceType={selectedCategory}
-                searchRadius={searchRadius}
-                onProviderSelect={(provider) => {
-                  // Optional: Handle provider selection
-                  console.log('Selected provider:', provider);
-                }}
-              />
-            </MapErrorBoundary>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+              <MapErrorBoundary onRetry={handleRefreshLocation}>
+                <InteractiveGoogleMap
+                  userLocation={userLocation}
+                  providers={filteredProviders}
+                  onRefreshLocation={handleRefreshLocation}
+                  isLoading={isLoadingNearby}
+                  selectedServiceType={selectedCategory}
+                  searchRadius={searchRadius}
+                  onProviderSelect={(provider) => {
+                    console.log('Selected provider:', provider);
+                  }}
+                />
+              </MapErrorBoundary>
+            </motion.div>
           </div>
           
 
@@ -560,11 +562,13 @@ const Services = () => {
 
             {paginatedProviders.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {paginatedProviders.map((provider) => (
-                  <Card
-                    key={provider.id}
-                    className="group hover:shadow-lg transition-all duration-300 cursor-pointer relative"
-                  >
+                {paginatedProviders.map((provider, idx) => (
+                  <motion.div key={provider.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
+                    <div className="relative group">
+                      <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                      <Card
+                        className="relative group bg-background hover:shadow-elegant card-hover cursor-pointer"
+                      >
                     {/* Heart Icon for Favorites */}
                     {currentUser && currentAccountType !== 'provider' && (
                       <Button
@@ -646,8 +650,10 @@ const Services = () => {
                           View Profile
                         </Button>
                       </div>
-                    </Link>
-                  </Card>
+                        </Link>
+                      </Card>
+                    </div>
+                  </motion.div>
                 ))}
               </div>
             ) : (
@@ -664,9 +670,10 @@ const Services = () => {
             {totalPages > 1 && (
               <div className="mt-8">
                 <AnimatedPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
+                  total={filteredProviders.length}
+                  perPage={providersPerPage}
+                  current={currentPage - 1}
+                  onChange={(pageIdx) => setCurrentPage(pageIdx + 1)}
                 />
               </div>
             )}

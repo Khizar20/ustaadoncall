@@ -66,7 +66,7 @@ const GoogleMapsAutocomplete = ({
       setIsSearching(true);
       
       // Try to use backend proxy first
-      const proxyUrl = `http://127.0.0.1:8000/api/google-maps/autocomplete?input=${encodeURIComponent(searchValue)}&types=geocode&components=country:pk`;
+      const proxyUrl = `${import.meta.env.VITE_API_BASE_URL}/api/google-maps/autocomplete?input=${encodeURIComponent(searchValue)}&types=geocode&components=country:pk`;
       
       const response = await fetch(proxyUrl, {
         method: 'GET',
@@ -183,7 +183,7 @@ const GoogleMapsAutocomplete = ({
       }
 
       // For real Google API suggestions, try to get coordinates via backend proxy
-      const proxyUrl = `http://127.0.0.1:8000/api/google-maps/place-details?place_id=${suggestion.place_id}&fields=geometry`;
+      const proxyUrl = `${import.meta.env.VITE_API_BASE_URL}/api/google-maps/place-details?place_id=${suggestion.place_id}&fields=geometry`;
       
       const response = await fetch(proxyUrl, {
         method: 'GET',

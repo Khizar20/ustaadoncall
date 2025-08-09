@@ -551,7 +551,7 @@ const ChatModal = ({
                               {message.id.startsWith('temp-') ? 'Sending...' : formatMessageTime(message.created_at)}
                             </p>
                             {message.sender_type !== currentUserType && !message.is_read && !message.id.startsWith('temp-') && (
-                              <Badge variant="secondary" className="text-xs ml-2 bg-blue-100 text-blue-600">
+                              <Badge variant="secondary" className="text-xs ml-2 bg-primary/10 text-primary">
                                 New
                               </Badge>
                             )}

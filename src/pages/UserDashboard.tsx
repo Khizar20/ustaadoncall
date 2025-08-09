@@ -993,19 +993,24 @@ const UserDashboard = () => {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs md:text-sm font-medium text-muted-foreground">Total Bookings</p>
                           <p className="text-lg md:text-2xl font-bold">{bookings.length}</p>
                         </div>
-                        <Calendar className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
+                        <Calendar className="h-6 w-6 md:h-8 md:w-8 text-[hsl(22_65%_45%)]" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
 
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -1015,9 +1020,12 @@ const UserDashboard = () => {
                         <Heart className="h-6 w-6 md:h-8 md:w-8 text-red-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
 
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -1027,9 +1035,12 @@ const UserDashboard = () => {
                         <CreditCard className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
 
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -1039,7 +1050,8 @@ const UserDashboard = () => {
                         <MapPin className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
                 </div>
 
                 {/* Recent Activity */}
@@ -1052,18 +1064,21 @@ const UserDashboard = () => {
                     {bookings.length > 0 ? (
                       <div className="space-y-4">
                         {bookings.slice(0, 3).map((booking) => (
-                          <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div>
-                              <p className="font-medium">{booking.provider_name}</p>
-                              <p className="text-sm text-muted-foreground">{booking.service_category}</p>
-                            </div>
-                            <div className="text-right">
-                              <Badge className={getStatusColor(booking.status)}>
-                                {booking.status}
-                              </Badge>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {formatDate(booking.booking_date)}
-                              </p>
+                          <div key={booking.id} className="relative group p-4 border rounded-lg">
+                             <div className="absolute -inset-[1px] rounded-lg bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                            <div className="relative flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">{booking.provider_name}</p>
+                                <p className="text-sm text-muted-foreground">{booking.service_category}</p>
+                              </div>
+                              <div className="text-right">
+                                <Badge className={getStatusColor(booking.status)}>
+                                  {booking.status}
+                                </Badge>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {formatDate(booking.booking_date)}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         ))}

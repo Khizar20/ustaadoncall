@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Crosshair, MapPin, Star, Phone, Mail, User, Wrench, Zap, Car, Sparkles, Home, Palette, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { type Location, type ProviderWithLocation, calculateDistance } from '@/lib/locationUtils';
@@ -594,14 +595,21 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
     <Card className="overflow-hidden">
       <div className="relative">
         {/* Map Container */}
-        <div
+        <motion.div
           ref={mapRef}
           className="w-full h-[50vh] min-h-[400px]"
           style={{ position: 'relative' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
         />
         
         {/* Map Controls */}
-        <div className="absolute top-4 right-4 flex flex-col gap-2">
+        <motion.div className="absolute top-4 right-4 flex flex-col gap-2"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
           <Button
             size="sm"
             variant="secondary"
@@ -610,17 +618,22 @@ const InteractiveGoogleMap: React.FC<InteractiveGoogleMapProps> = ({
           >
             <Crosshair className="h-4 w-4" />
           </Button>
-        </div>
+        </motion.div>
 
         {/* Map Info */}
-        <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+        <motion.div 
+          className="absolute bottom-4 left-4 glass-panel rounded-lg p-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
           <div className="text-sm">
             <div className="font-medium">Your Location</div>
             <div className="text-muted-foreground">
               {providers.length} providers within {searchRadius}km
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </Card>
   );

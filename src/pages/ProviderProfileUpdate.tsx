@@ -346,12 +346,12 @@ const ProviderProfileUpdate = () => {
                       />
                     </div>
 
-                    <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="p-4 bg-secondary rounded-lg">
                       <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <AlertCircle className="w-5 h-5 text-primary mt-0.5" />
                         <div>
-                          <h4 className="font-medium text-blue-900">Service Management</h4>
-                          <p className="text-sm text-blue-700 mt-1">
+                          <h4 className="font-medium text-foreground">Service Management</h4>
+                          <p className="text-sm text-muted-foreground mt-1">
                             To update your service categories, experience levels, and pricing, please use the Services section in your dashboard.
                           </p>
                         </div>

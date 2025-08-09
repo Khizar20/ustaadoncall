@@ -156,7 +156,7 @@ export default function ProvidersMap({
               </div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-[hsl(22_65%_45%)] rounded-full"></div>
                   <span>You</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -177,8 +177,10 @@ export default function ProvidersMap({
           </h3>
           
           {providersWithDistance.map((provider, index) => (
-            <Card key={provider.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
+            <div key={provider.id} className="relative group">
+              <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+              <Card className="relative hover:shadow-elegant transition-shadow">
+                <CardContent className="p-4">
                 <div className="flex items-start gap-4">
                   {/* Provider Avatar */}
                   <div className="flex-shrink-0">
@@ -269,8 +271,9 @@ export default function ProvidersMap({
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           ))}
         </div>
       ) : (

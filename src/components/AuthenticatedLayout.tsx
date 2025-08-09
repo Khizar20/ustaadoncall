@@ -16,6 +16,7 @@ import {
   Menu,
   X as CloseIcon
 } from "lucide-react";
+import logoSrc from "../../logo/logo.png";
 
 interface UserInfo {
   id: string;
@@ -128,57 +129,56 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
     <div className="min-h-screen bg-background">
       {/* Header/Navigation Bar - Only show if user is authenticated and not on auth pages */}
       {shouldShowHeader && userInfo && (
-        <header className="border-b bg-card shadow-sm sticky top-0 z-50">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
+        <header className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-3 bg-transparent">
+          <div className="container mx-auto">
+            <div className="flex items-center justify-between h-14 md:h-16 rounded-2xl md:rounded-full px-3 md:px-6 text-white shadow-xl font-light"
+              style={{ backgroundColor: '#CC6E37' }}>
               {/* Logo and Main Navigation */}
               <div className="flex items-center gap-8">
                 {/* Logo */}
                 <Link to="/" className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <Home className="w-5 h-5 text-white" />
-                  </div>
+                  <img src={logoSrc} alt="UstaadOnCall" className="h-10 w-auto md:h-12 object-contain shrink-0" />
                   <span className="font-bold text-xl">UstaadOnCall</span>
                 </Link>
 
                 {/* Desktop Navigation */}
-                <nav className="hidden md:flex items-center gap-6">
+                <nav className="hidden md:flex items-center gap-2">
                   <Link 
                     to="/" 
-                    className={`text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-full text-sm font-normal transition-colors ${
                       location.pathname === '/' 
-                        ? 'text-primary' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-white bg-white/15' 
+                        : 'text-white/85 hover:text-white hover:bg-white/10'
                     }`}
                   >
                     Home
                   </Link>
                   <Link 
                     to="/services" 
-                    className={`text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-full text-sm font-normal transition-colors ${
                       location.pathname === '/services' 
-                        ? 'text-primary' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-white bg-white/15' 
+                        : 'text-white/85 hover:text-white hover:bg-white/10'
                     }`}
                   >
                     Services
                   </Link>
                   <Link 
                     to="/about" 
-                    className={`text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-full text-sm font-normal transition-colors ${
                       location.pathname === '/about' 
-                        ? 'text-primary' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-white bg-white/15' 
+                        : 'text-white/85 hover:text-white hover:bg-white/10'
                     }`}
                   >
                     About
                   </Link>
                   <Link 
                     to="/contact" 
-                    className={`text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-full text-sm font-normal transition-colors ${
                       location.pathname === '/contact' 
-                        ? 'text-primary' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-white bg-white/15' 
+                        : 'text-white/85 hover:text-white hover:bg-white/10'
                     }`}
                   >
                     Contact
@@ -189,7 +189,7 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
               {/* User Menu and Actions */}
               <div className="flex items-center gap-4">
                 {/* Notifications */}
-                <Button variant="ghost" size="sm" className="relative">
+                <Button variant="ghost" size="sm" className="relative text-white hover:bg-white/10 rounded-full">
                   <Bell className="w-5 h-5" />
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs">3</Badge>
                 </Button>
@@ -199,12 +199,14 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
                   <Button
                     variant="ghost"
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-white hover:bg-white/10 rounded-full"
                   >
-                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                      style={{ background: 'conic-gradient(from 180deg at 50% 50%, hsl(22,65%,45%), hsl(22,65%,55%), hsl(22,65%,45%))' }}
+                    >
                       <User className="w-4 h-4 text-primary" />
                     </div>
-                    <span className="hidden sm:block text-sm font-medium">
+                    <span className="hidden sm:block text-sm font-medium text-white">
                       {userInfo.name}
                     </span>
                     <ChevronDown className="w-4 h-4" />

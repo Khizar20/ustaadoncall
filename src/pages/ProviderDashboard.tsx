@@ -502,7 +502,7 @@ const ProviderDashboard = () => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed': return 'bg-green-100 text-green-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
+      case 'confirmed': return 'bg-[hsl(40_30%_92%)] text-[hsl(24_20%_18%)]';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
       case 'rejected': return 'bg-red-100 text-red-800';
@@ -815,7 +815,9 @@ const ProviderDashboard = () => {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -825,9 +827,12 @@ const ProviderDashboard = () => {
                         <Calendar className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
 
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -837,9 +842,12 @@ const ProviderDashboard = () => {
                         <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
 
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -854,9 +862,12 @@ const ProviderDashboard = () => {
                         <Clock className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
 
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -871,9 +882,12 @@ const ProviderDashboard = () => {
                         <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
 
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -883,9 +897,12 @@ const ProviderDashboard = () => {
                         <Star className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
 
-                  <Card>
+                  <div className="relative group">
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                    <Card className="relative">
                     <CardContent className="p-3 md:p-4">
                       <div className="flex items-center justify-between">
                         <div>
@@ -895,7 +912,8 @@ const ProviderDashboard = () => {
                         <FileText className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
                 </div>
 
                 {/* Recent Activity */}
@@ -917,7 +935,9 @@ const ProviderDashboard = () => {
                       <div className="space-y-4">
                         {bookings.slice(0, 3).map((booking) => (
                           <div key={booking.id}>
-                            <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                            <div className="relative group border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                              <div className="absolute -inset-[1px] rounded-lg bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
+                              <div className="relative">
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex-1">
                                 <h4 className="font-semibold text-foreground">{booking.user_name}</h4>
@@ -1035,7 +1055,8 @@ const ProviderDashboard = () => {
 
                             <div className="text-xs text-muted-foreground mt-2">
                               Requested on {formatDate(booking.created_at)}
-                            </div>
+                              </div>
+                              </div>
                           </div>
                           
                           </div>
@@ -1425,7 +1446,7 @@ const ProviderDashboard = () => {
                                 <Button 
                                   size="sm" 
                                   onClick={() => showConfirmationDialog(booking.id, 'confirmed', 'Confirm Booking', 'Are you sure you want to confirm this booking? This action cannot be undone.')}
-                                  className="flex-1 bg-green-600 hover:bg-green-700 text-sm"
+                                  className="flex-1"
                                 >
                                   <Check className="w-4 h-4 mr-1" />
                                   Confirm
@@ -1446,7 +1467,7 @@ const ProviderDashboard = () => {
                               <Button 
                                 size="sm" 
                                 onClick={() => showConfirmationDialog(booking.id, 'completed', 'Mark Complete', 'Are you sure you want to mark this booking as completed? This action cannot be undone.')}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm"
+                                className="flex-1"
                               >
                                 <CheckCircle className="w-4 h-4 mr-1" />
                                 Mark Complete

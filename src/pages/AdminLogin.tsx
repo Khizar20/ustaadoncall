@@ -28,7 +28,7 @@ const AdminLogin = () => {
 
   const verifyToken = async (token: string) => {
     try {
-      const response = await fetch("http://localhost:8000/admin/me", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/me`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -51,7 +51,7 @@ const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/admin/login", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

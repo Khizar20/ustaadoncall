@@ -1,8 +1,9 @@
 import { Users, Shield, Award, Heart } from "lucide-react";
+import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Navigation } from "@/components/ui/navigation";
 import { Footer } from "@/components/ui/footer";
-import aboutBg from "@/assets/about-bg.jpg";
+// about hero uses solid brand-aligned background, no image overlay
 
 const values = [
   {
@@ -35,28 +36,59 @@ const stats = [
 ];
 
 const About = () => {
+  // Removed page-specific cursor follower; replaced by global cursor component
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20">
+      <section className="relative pt-32 pb-20 overflow-hidden">
         <div 
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: `linear-gradient(rgba(29, 191, 115, 0.85), rgba(25, 163, 102, 0.85)), url(${aboutBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
+            backgroundColor: '#FCFAF8'
           }}
         />
+        {/* Decorative animated shapes */}
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -z-0 inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          {/* Subtle animated SVG grid */}
+          <svg className="absolute inset-0 w-full h-full opacity-[0.08]" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#CC6E37" strokeOpacity="0.15" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+          <motion.div
+            className="absolute right-10 top-10 w-40 h-40 rounded-full blur-3xl"
+            style={{ background: 'radial-gradient(circle at 30% 30%, rgba(204,110,55,0.10), transparent 60%)' }}
+            animate={{ y: [0, -10, 0], x: [0, 10, 0] }}
+            transition={{ repeat: Infinity, duration: 12 }}
+          />
+          <motion.div
+            className="absolute left-0 bottom-10 w-56 h-56 rounded-full blur-3xl"
+            style={{ background: 'radial-gradient(circle at 70% 70%, rgba(204,110,55,0.08), transparent 60%)' }}
+            animate={{ y: [0, 12, 0], x: [0, -8, 0] }}
+            transition={{ repeat: Infinity, duration: 14 }}
+          />
+          {/* Global cursor handles page-wide cursor effects */}
+        </motion.div>
         <div className="container mx-auto px-6 lg:px-8 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="font-heading font-bold text-hero text-foreground mb-6">
+            <h1 className="font-heading font-light text-hero text-foreground mb-6">
               BUILDING.<br />
               TRUST.<br />
               TOGETHER.
             </h1>
-            <p className="text-xl md:text-2xl text-white max-w-3xl mx-auto font-medium">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               We're revolutionizing local services by connecting communities with verified, premium professionals who care about quality as much as you do.
             </p>
           </div>
@@ -102,17 +134,18 @@ const About = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {values.map((value, index) => (
-              <Card 
-                key={value.title} 
-                className="p-6 text-center border-border bg-background hover:shadow-elegant transition-all duration-300 hover:-translate-y-2"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <value.icon className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg text-foreground mb-3">{value.title}</h3>
-                <p className="text-muted-foreground">{value.description}</p>
-              </Card>
+              <div key={value.title} className="relative group" style={{ animationDelay: `${index * 100}ms` }}>
+                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[hsl(22_65%_45%/0.35)] via-[hsl(22_65%_52%/0.35)] to-[hsl(22_65%_45%/0.35)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                <Card 
+                  className="relative p-6 text-center border-border bg-background hover:shadow-elegant transition-all duration-300 hover:-translate-y-2"
+                >
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <value.icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-lg text-foreground mb-3">{value.title}</h3>
+                  <p className="text-muted-foreground">{value.description}</p>
+                </Card>
+              </div>
             ))}
           </div>
         </div>

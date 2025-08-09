@@ -567,7 +567,7 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                         ) : notification.notification_type === 'booking_rejected' ? (
                           <XCircle className="w-4 h-4 text-red-600" />
                         ) : notification.notification_type === 'booking_completed' ? (
-                          <CheckCircle className="w-4 h-4 text-blue-600" />
+                          <CheckCircle className="w-4 h-4 text-green-600" />
                         ) : (
                           <Bell className="w-4 h-4 text-primary" />
                         )}
@@ -582,7 +582,7 @@ const NotificationDropdown = ({ currentUserId, currentUserType, onOpenChat }: No
                               }
                             </p>
                             {notification.type === 'chat' && notification.unread_count > 1 && (
-                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-600">
+                              <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
                                 {notification.unread_count}
                               </Badge>
                             )}
