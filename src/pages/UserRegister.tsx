@@ -273,7 +273,7 @@ const UserRegister = () => {
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <Home className="w-5 h-5 text-white" />
                 </div>
-                <span className="font-bold text-xl">UstaadOnCall</span>
+                <span className="font-bold text-xl">ThoseJobs</span>
               </Link>
 
               {/* Right side - empty for balance */}
@@ -354,7 +354,7 @@ const UserRegister = () => {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Home className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl">UstaadOnCall</span>
+              <span className="font-bold text-xl">ThoseJobs</span>
             </Link>
 
             {/* Right side - empty for balance */}
@@ -383,7 +383,7 @@ const UserRegister = () => {
               </motion.div>
               <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
               <CardDescription>
-                Join UstaadOnCall and start booking services
+                Join ThoseJobs and start booking services
               </CardDescription>
             </CardHeader>
             <CardContent>

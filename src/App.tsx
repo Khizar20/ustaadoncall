@@ -21,10 +21,14 @@ import ProviderLogin from "./pages/ProviderLogin";
 import ProviderDashboard from "./pages/ProviderDashboard";
 import ProviderProfileUpdate from "./pages/ProviderProfileUpdate";
 import ProviderRouteGuard from "./components/ProviderRouteGuard";
+import WorkerDashboard from "./pages/WorkerDashboard";
+import WorkerRouteGuard from "./components/WorkerRouteGuard";
 import UserLogin from "./pages/UserLogin";
 import UserRegister from "./pages/UserRegister";
 import UserDashboard from "./pages/UserDashboard";
 import UserRouteGuard from "./components/UserRouteGuard";
+import RequesterDashboard from "./pages/RequesterDashboard";
+import RequesterRouteGuard from "./components/RequesterRouteGuard";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import CreateLiveRequest from "./pages/CreateLiveRequest";
@@ -133,6 +137,14 @@ function AnimatedRoutes() {
               </ProviderRouteGuard>
             } 
           />
+          <Route 
+            path="/worker-dashboard" 
+            element={
+              <WorkerRouteGuard>
+                <WorkerDashboard />
+              </WorkerRouteGuard>
+            } 
+          />
           <Route path="/user-login" element={<UserLogin />} />
           <Route path="/user-register" element={<UserRegister />} />
           <Route path="/reset-password" element={<ResetPassword />} />
@@ -142,6 +154,14 @@ function AnimatedRoutes() {
               <UserRouteGuard>
                 <UserDashboard />
               </UserRouteGuard>
+            } 
+          />
+          <Route 
+            path="/requester-dashboard" 
+            element={
+              <RequesterRouteGuard>
+                <RequesterDashboard />
+              </RequesterRouteGuard>
             } 
           />
           <Route 

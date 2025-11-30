@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Clock, Send, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,13 +60,13 @@ const Contact = () => {
             </svg>
             <motion.div
               className="absolute right-10 top-10 w-40 h-40 rounded-full blur-3xl"
-              style={{ background: 'radial-gradient(circle at 30% 30%, hsla(22,65%,45%,0.35), transparent 60%)' }}
+              style={{ background: 'radial-gradient(circle at 30% 30%, hsla(214,88%,40%,0.25), transparent 60%)' }}
               animate={{ y: [0, -10, 0], x: [0, 10, 0] }}
               transition={{ repeat: Infinity, duration: 12 }}
             />
             <motion.div
               className="absolute left-0 bottom-10 w-56 h-56 rounded-full blur-3xl"
-              style={{ background: 'radial-gradient(circle at 70% 70%, hsla(22,65%,45%,0.25), transparent 60%)' }}
+              style={{ background: 'radial-gradient(circle at 70% 70%, hsla(214,88%,40%,0.20), transparent 60%)' }}
               animate={{ y: [0, 12, 0], x: [0, -8, 0] }}
               transition={{ repeat: Infinity, duration: 14 }}
             />
@@ -76,7 +76,7 @@ const Contact = () => {
               Get In Touch
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              We're here to help. Reach out to us for support, partnerships, or any questions about our services.
+              Have questions about ThoseJobs.com? We're here to help with support, partnerships, or any inquiries about our Houston-area gig marketplace.
             </p>
           </div>
         </div>
@@ -86,9 +86,7 @@ const Contact = () => {
         <div className="container mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Form */}
-            <div className="relative group">
-              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
-              <Card className="relative p-8 border-border bg-card hover:shadow-elegant transition-shadow">
+            <Card className="p-8 border-border bg-card">
               <h2 className="font-heading font-bold text-2xl text-foreground mb-6">
                 Send us a Message
               </h2>
@@ -159,13 +157,24 @@ const Contact = () => {
                   />
                 </div>
                 
-                <Button type="submit" variant="default" size="lg" className="w-full">
+                <Button 
+                  type="submit" 
+                  variant="default" 
+                  size="lg" 
+                  className="w-full font-medium"
+                  style={{ backgroundColor: "#0846BC", color: "#FFFFFF" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#073a9e";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#0846BC";
+                  }}
+                >
                   <Send className="mr-2 h-4 w-4" />
                   Send Message
                 </Button>
                 </form>
-              </Card>
-            </div>
+            </Card>
 
             {/* Contact Information */}
             <div className="space-y-8">
@@ -179,50 +188,61 @@ const Contact = () => {
               </div>
 
               <div className="space-y-6">
-                <div className="relative group">
-                  <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
-                  <Card className="relative p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
+                <Card className="p-6 border-border bg-card">
                   <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Phone className="h-6 w-6 text-primary" />
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#0846BC" }}>
+                      <Phone className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Phone Support</h3>
                       <p className="text-muted-foreground mb-2">Speak directly with our support team</p>
-                      <p className="font-medium text-primary">+92 3180542026</p>
+                      <a href="tel:+17135551234" className="font-medium text-primary hover:underline">
+                        (713) 555-1234
+                      </a>
                     </div>
                   </div>
-                  </Card>
-                </div>
+                </Card>
 
-                <div className="relative group">
-                  <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
-                  <Card className="relative p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
+                <Card className="p-6 border-border bg-card">
                   <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Mail className="h-6 w-6 text-primary" />
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#0846BC" }}>
+                      <Mail className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Email Support</h3>
                       <p className="text-muted-foreground mb-2">Send us detailed inquiries</p>
-                      <p className="font-medium text-primary">hello@ustaadonca­ll.com</p>
+                      <a href="mailto:hello@thosejobs.com" className="font-medium text-primary hover:underline">
+                        hello@thosejobs.com
+                      </a>
                     </div>
                   </div>
-                  </Card>
-                </div>
+                </Card>
 
-
-
-                <div className="relative group">
-                  <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[hsl(22_65%_60%)] via-[hsl(22_65%_50%)] to-[hsl(22_65%_45%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
-                  <Card className="relative p-6 border-border bg-card hover:shadow-elegant transition-all duration-300">
+                <Card className="p-6 border-border bg-card">
                   <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Clock className="h-6 w-6 text-primary" />
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#0846BC" }}>
+                      <MapPin className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground mb-1">Office Location</h3>
+                      <p className="text-muted-foreground mb-2">Houston Area, Texas</p>
+                      <div className="font-medium text-foreground">
+                        <p>1200 Main Street, Suite 500</p>
+                        <p>Houston, TX 77002</p>
+                        <p className="text-sm text-muted-foreground mt-1">Serving the Greater Houston Area</p>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-6 border-border bg-card">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#0846BC" }}>
+                      <Clock className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Business Hours</h3>
-                      <p className="text-muted-foreground mb-2">When we're available</p>
+                      <p className="text-muted-foreground mb-2">When we're available (CST)</p>
                       <div className="font-medium text-foreground">
                         <p>Monday - Friday: 8:00 AM - 8:00 PM</p>
                         <p>Saturday: 9:00 AM - 6:00 PM</p>
@@ -230,8 +250,7 @@ const Contact = () => {
                       </div>
                     </div>
                   </div>
-                  </Card>
-                </div>
+                </Card>
               </div>
             </div>
           </div>
@@ -246,53 +265,53 @@ const Contact = () => {
               Frequently Asked Questions
             </h2>
             <p className="text-xl text-muted-foreground">
-              Quick answers to common questions
+              Quick answers to common questions about ThoseJobs.com
             </p>
           </div>
 
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div>
-                <h3 className="font-semibold text-foreground mb-2">How are providers verified?</h3>
+                <h3 className="font-semibold text-foreground mb-2">How does the payment system work?</h3>
                 <p className="text-muted-foreground">
-                  All providers undergo background checks, skills assessment, and insurance verification before joining our platform.
+                  We use escrow payments through Stripe Connect. The client's payment is held securely until the job is completed and approved. Workers receive 70% of the payment, and we take a 30% platform commission.
                 </p>
               </div>
               
               <div>
-                <h3 className="font-semibold text-foreground mb-2">What's included in the service fee?</h3>
+                <h3 className="font-semibold text-foreground mb-2">What areas do you serve?</h3>
                 <p className="text-muted-foreground">
-                  Our transparent pricing includes all labor, basic materials, and a satisfaction guarantee. Additional materials are quoted separately.
+                  Currently, we're focused on the Greater Houston Area (MVP). This includes Houston, Sugar Land, Katy, The Woodlands, Pearland, Spring, and surrounding communities.
                 </p>
               </div>
               
               <div>
-                <h3 className="font-semibold text-foreground mb-2">Can I reschedule my appointment?</h3>
+                <h3 className="font-semibold text-foreground mb-2">How do I accept a job?</h3>
                 <p className="text-muted-foreground">
-                  Yes, you can reschedule up to 4 hours before your appointment through your account dashboard or by calling our support team.
+                  Browse available jobs on the Jobs page, review the details, and click "Accept Job" to claim it. Once accepted, you'll be connected with the client through our in-app chat system.
                 </p>
               </div>
             </div>
             
             <div className="space-y-6">
               <div>
-                <h3 className="font-semibold text-foreground mb-2">What if I'm not satisfied?</h3>
+                <h3 className="font-semibold text-foreground mb-2">What types of jobs are available?</h3>
                 <p className="text-muted-foreground">
-                  We offer a 100% satisfaction guarantee. If you're not happy with the service, we'll make it right or provide a full refund.
+                  We focus on small, physical, real-world tasks like property checks, deliveries, minor maintenance, signage work, moving assistance, and other local gig opportunities in the Houston area.
                 </p>
               </div>
               
               <div>
-                <h3 className="font-semibold text-foreground mb-2">How do I become a provider?</h3>
+                <h3 className="font-semibold text-foreground mb-2">How do I become a Worker (Gig Doer)?</h3>
                 <p className="text-muted-foreground">
-                  Visit our "Become a Provider" page to start the application process. We'll guide you through verification and onboarding.
+                  Visit our "Become a Provider" page to start the application process. We'll guide you through verification, background checks, and onboarding to get you started accepting jobs.
                 </p>
               </div>
               
               <div>
-                <h3 className="font-semibold text-foreground mb-2">Do you offer emergency services?</h3>
+                <h3 className="font-semibold text-foreground mb-2">How is job proof verified?</h3>
                 <p className="text-muted-foreground">
-                  Yes, we have 24/7 emergency services available for plumbing, electrical, and other urgent repairs. Additional fees may apply.
+                  Workers submit proof (images/video) upon job completion. Our AI verification system reviews the submission, and once approved by the client, payment is automatically released.
                 </p>
               </div>
             </div>

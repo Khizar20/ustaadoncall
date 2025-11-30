@@ -1,1127 +1,955 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
+  BarChart3,
+  Users,
+  Briefcase,
+  DollarSign,
+  LogOut,
+  Filter,
+  Search,
+  AlertCircle,
   CheckCircle, 
   XCircle, 
   Clock, 
   Eye, 
-  Search, 
-  Filter,
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
+  MessageSquare,
+  Image as ImageIcon,
+  TrendingUp,
   FileText,
-  Star,
-  AlertCircle,
-  LogOut,
-  Shield,
-  BarChart3
+  CreditCard
 } from "lucide-react";
-import AdminSidebar from "@/components/ui/admin-sidebar";
-import AdminSettings from "@/components/admin-settings";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { Navigation } from "@/components/ui/navigation";
+import { Footer } from "@/components/ui/footer";
 import { useToast } from "@/hooks/use-toast";
-import { sendProviderApprovalEmail } from "@/lib/emailService";
+import { useNavigate } from "react-router-dom";
 
-interface PendingRequest {
-  id: string;
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  service_category: string[];
-  experience: string;
-  location: string;
-  bio: string;
-  profile_image_url: string;
-  cnic_front_url: string;
-  cnic_back_url: string;
-  jobs_pricing: Record<string, any[]>;
-  status: 'pending' | 'approved' | 'rejected' | 'under_review';
-  admin_notes: string;
-  created_at: string;
-  updated_at: string;
-}
+// Hardcoded Platform Metrics
+const platformMetrics = {
+  totalJobsCompleted: 350,
+  totalWorkers: 50,
+  totalClients: 120,
+  totalFeesCollected: 15000.00,
+  jobsPerWeek: 15,
+  jobsPerDay: [5, 7, 4, 6, 8, 9, 5], // Last 7 days
+  jobsPerMonth: [45, 52, 48, 55] // Last 4 months
+};
 
-interface Provider {
-  id: string;
-  user_id: string;
-  name: string;
-  email: string;
-  phone: string;
-  service_category: string;
-  bio: string;
-  experience: string;
-  location: string;
-  profile_image: string;
-  cnic_front: string;
-  cnic_back: string;
-  is_verified: boolean;
-  rating: number;
-  reviews_count: number;
-  jobs_pricing: Record<string, any[]>;
-  created_at: string;
-}
+// Hardcoded User List
+const userList = [
+  {
+    id: "user-001",
+    name: "John Smith",
+    email: "john.smith@example.com",
+    role: "Worker",
+    rating: 4.8,
+    jobsCompleted: 25,
+    flagStatus: "None",
+    joinedDate: "2025-01-15T10:00:00Z"
+  },
+  {
+    id: "user-002",
+    name: "Sarah Johnson",
+    email: "sarah.j@example.com",
+    role: "Worker",
+    rating: 3.2,
+    jobsCompleted: 12,
+    flagStatus: "Low Rating",
+    joinedDate: "2025-02-20T14:30:00Z"
+  },
+  {
+    id: "user-003",
+    name: "Mike Davis",
+    email: "mike.davis@example.com",
+    role: "Worker",
+    rating: 5.0,
+    jobsCompleted: 45,
+    flagStatus: "None",
+    joinedDate: "2024-11-10T09:15:00Z"
+  },
+  {
+    id: "user-004",
+    name: "Emily Chen",
+    email: "emily.chen@example.com",
+    role: "Worker",
+    rating: 4.5,
+    jobsCompleted: 30,
+    flagStatus: "None",
+    joinedDate: "2024-12-05T11:20:00Z"
+  },
+  {
+    id: "user-005",
+    name: "Robert Wilson",
+    email: "robert.w@example.com",
+    role: "Worker",
+    rating: 2.8,
+    jobsCompleted: 8,
+    flagStatus: "Suspicious Activity",
+    joinedDate: "2025-03-01T16:45:00Z"
+  },
+  {
+    id: "user-006",
+    name: "Khizar Ahmed",
+    email: "khizarahmed3@gmail.com",
+    role: "Client",
+    rating: null,
+    jobsPosted: 8,
+    flagStatus: "None",
+    joinedDate: "2024-10-20T08:00:00Z"
+  },
+  {
+    id: "user-007",
+    name: "Lisa Anderson",
+    email: "lisa.a@example.com",
+    role: "Client",
+    rating: null,
+    jobsPosted: 15,
+    flagStatus: "None",
+    joinedDate: "2024-09-15T12:30:00Z"
+  },
+  {
+    id: "user-008",
+    name: "David Brown",
+    email: "david.brown@example.com",
+    role: "Client",
+    rating: null,
+    jobsPosted: 5,
+    flagStatus: "None",
+    joinedDate: "2025-01-25T10:15:00Z"
+  }
+];
+
+// Hardcoded Job List
+const jobList = [
+  {
+    id: "job-001",
+    title: "Replace lightbulb on 'Acme Co' sign",
+    client: "Khizar Ahmed",
+    worker: "John Smith",
+    status: "Completed",
+    suspicious: false,
+    disputeStatus: "None",
+    amount: 100.00,
+    date: "2025-11-20T17:00:00Z"
+  },
+  {
+    id: "job-002",
+    title: "Property check and photo documentation",
+    client: "Lisa Anderson",
+    worker: "Sarah Johnson",
+    status: "Submitted",
+    suspicious: true,
+    disputeStatus: "Open",
+    amount: 80.00,
+    date: "2025-11-25T14:00:00Z"
+  },
+  {
+    id: "job-003",
+    title: "Deliver package to downtown office",
+    client: "David Brown",
+    worker: "Mike Davis",
+    status: "In Progress",
+    suspicious: false,
+    disputeStatus: "None",
+    amount: 60.00,
+    date: "2025-11-28T10:00:00Z"
+  },
+  {
+    id: "job-004",
+    title: "Minor fence repair",
+    client: "Khizar Ahmed",
+    worker: "Emily Chen",
+    status: "Completed",
+    suspicious: false,
+    disputeStatus: "Closed",
+    amount: 120.00,
+    date: "2025-11-15T18:00:00Z"
+  },
+  {
+    id: "job-005",
+    title: "Gutter cleaning for residential property",
+    client: "Lisa Anderson",
+    worker: "Robert Wilson",
+    status: "Completed",
+    suspicious: true,
+    disputeStatus: "None",
+    amount: 140.00,
+    date: "2025-11-10T15:00:00Z"
+  }
+];
+
+// Hardcoded Dispute Data
+const disputeData = {
+  jobId: "job-002",
+  jobTitle: "Property check and photo documentation",
+  client: "Lisa Anderson",
+  worker: "Sarah Johnson",
+  amount: 80.00,
+  date: "2025-11-25T14:00:00Z",
+  chatHistory: [
+    {
+      sender: "Client",
+      message: "Hi, I need someone to check my property and take photos of the exterior.",
+      timestamp: "2025-11-25T10:00:00Z"
+    },
+    {
+      sender: "Worker",
+      message: "I can help with that! I'll be there at 2 PM today.",
+      timestamp: "2025-11-25T10:15:00Z"
+    },
+    {
+      sender: "Client",
+      message: "Perfect, thank you!",
+      timestamp: "2025-11-25T10:20:00Z"
+    },
+    {
+      sender: "Worker",
+      message: "Job completed! I've uploaded the photos.",
+      timestamp: "2025-11-25T14:30:00Z"
+    },
+    {
+      sender: "Client",
+      message: "The photos don't show what I requested. I asked for interior photos too, but you only took exterior ones.",
+      timestamp: "2025-11-25T15:00:00Z"
+    },
+    {
+      sender: "Worker",
+      message: "I apologize for the confusion. The job description said 'exterior photos' so I focused on that.",
+      timestamp: "2025-11-25T15:10:00Z"
+    },
+    {
+      sender: "Client",
+      message: "This is not acceptable. I want a refund.",
+      timestamp: "2025-11-25T15:30:00Z"
+    }
+  ],
+  proofImages: [
+    "https://via.placeholder.com/400x300?text=Proof+Image+1",
+    "https://via.placeholder.com/400x300?text=Proof+Image+2",
+    "https://via.placeholder.com/400x300?text=Proof+Image+3"
+  ],
+  aiCheckResult: "Failed - Images do not match job requirements"
+};
+
+// Hardcoded Payout List
+const payoutList = [
+  {
+    id: "payout-001",
+    workerName: "John Smith",
+    amount: 70.00,
+    jobTitle: "Replace lightbulb on 'Acme Co' sign",
+    status: "Approved",
+    date: "2025-11-20T18:00:00Z"
+  },
+  {
+    id: "payout-002",
+    workerName: "Mike Davis",
+    amount: 42.00,
+    jobTitle: "Deliver package to downtown office",
+    status: "Pending",
+    date: "2025-11-28T11:00:00Z"
+  },
+  {
+    id: "payout-003",
+    workerName: "Emily Chen",
+    amount: 84.00,
+    jobTitle: "Minor fence repair",
+    status: "Approved",
+    date: "2025-11-15T19:00:00Z"
+  },
+  {
+    id: "payout-004",
+    workerName: "Sarah Johnson",
+    amount: 56.00,
+    jobTitle: "Property check and photo documentation",
+    status: "Pending",
+    date: "2025-11-25T15:00:00Z"
+  }
+];
 
 const AdminPanel = () => {
-  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<PendingRequest[]>([]);
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [filteredProviders, setFilteredProviders] = useState<Provider[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [activeTab, setActiveTab] = useState("metrics");
+  const [filteredUsers, setFilteredUsers] = useState(userList);
+  const [filteredJobs, setFilteredJobs] = useState(jobList);
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [ratingFilter, setRatingFilter] = useState("all");
+  const [flagFilter, setFlagFilter] = useState("all");
+  const [jobStatusFilter, setJobStatusFilter] = useState("all");
+  const [suspiciousFilter, setSuspiciousFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [providerSearchTerm, setProviderSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
-  const [adminNotes, setAdminNotes] = useState("");
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'providers' | 'analytics' | 'settings'>('dashboard');
-  const [adminInfo, setAdminInfo] = useState<any>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check authentication
     const token = localStorage.getItem("admin_token");
     if (!token) {
-      window.location.href = "/admin-login";
+      navigate("/admin-login");
       return;
     }
+  }, [navigate]);
 
-    // Verify token and get admin info
-    verifyAuth();
-  }, []);
+  useEffect(() => {
+    // Filter users
+    let filtered = [...userList];
 
-  const verifyAuth = async () => {
-    const token = localStorage.getItem("admin_token");
-    if (!token) {
-      window.location.href = "/admin-login";
-      return;
+    if (roleFilter !== "all") {
+      filtered = filtered.filter(user => user.role === roleFilter);
     }
 
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/me`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        localStorage.removeItem("admin_token");
-        window.location.href = "/admin-login";
-        return;
+    if (ratingFilter !== "all") {
+      if (ratingFilter === "high") {
+        filtered = filtered.filter(user => user.rating && user.rating >= 4.5);
+      } else if (ratingFilter === "low") {
+        filtered = filtered.filter(user => user.rating && user.rating < 3.5);
       }
-
-      const adminData = await response.json();
-      setAdminInfo(adminData);
-      
-      // Fetch data
-      fetchPendingRequests();
-      fetchProviders();
-    } catch (error) {
-      localStorage.removeItem("admin_token");
-      window.location.href = "/admin-login";
     }
-  };
 
-  useEffect(() => {
-    filterRequests();
-  }, [pendingRequests, searchTerm, statusFilter]);
-
-  useEffect(() => {
-    filterProviders();
-  }, [providers, providerSearchTerm]);
-
-  const fetchPendingRequests = async () => {
-    try {
-      const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pending-requests/`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error("Failed to fetch requests");
-      const data = await response.json();
-      setPendingRequests(data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch pending requests",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+    if (flagFilter !== "all") {
+      filtered = filtered.filter(user => user.flagStatus === flagFilter);
     }
-  };
 
-  const fetchProviders = async () => {
-    try {
-      const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/providers/`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error("Failed to fetch providers");
-      const data = await response.json();
-      setProviders(data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch providers",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem("admin_token");
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/logout`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      localStorage.removeItem("admin_token");
-      localStorage.removeItem("admin_expires_at");
-      window.location.href = "/admin-login";
-    }
-  };
-
-  const handleAdminUpdate = (updatedInfo: any) => {
-    setAdminInfo(updatedInfo);
-  };
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab as any);
-  };
-
-  const filterRequests = () => {
-    let filtered = pendingRequests;
-
-    // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(request =>
-        request.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.service_category.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase()))
+      filtered = filtered.filter(user =>
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Filter by status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(request => request.status === statusFilter);
+    setFilteredUsers(filtered);
+  }, [roleFilter, ratingFilter, flagFilter, searchTerm]);
+
+  useEffect(() => {
+    // Filter jobs
+    let filtered = [...jobList];
+
+    if (jobStatusFilter !== "all") {
+      filtered = filtered.filter(job => job.status === jobStatusFilter);
     }
 
-    setFilteredRequests(filtered);
-  };
-
-  const filterProviders = () => {
-    let filtered = providers;
-
-    // Filter by search term
-    if (providerSearchTerm) {
-      filtered = filtered.filter(provider =>
-        provider.name.toLowerCase().includes(providerSearchTerm.toLowerCase()) ||
-        provider.service_category.toLowerCase().includes(providerSearchTerm.toLowerCase()) ||
-        provider.location.toLowerCase().includes(providerSearchTerm.toLowerCase())
+    if (suspiciousFilter !== "all") {
+      filtered = filtered.filter(job => 
+        suspiciousFilter === "suspicious" ? job.suspicious : !job.suspicious
       );
     }
 
-    setFilteredProviders(filtered);
+    setFilteredJobs(filtered);
+  }, [jobStatusFilter, suspiciousFilter]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_expires_at");
+    navigate("/admin-login");
   };
 
-  const updateRequestStatus = async (requestId: string, status: string, notes: string = "") => {
-    setIsUpdating(true);
-    try {
-      const token = localStorage.getItem("admin_token");
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/pending-requests/${requestId}`, {
-        method: "PATCH",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status,
-          admin_notes: notes
-        })
-      });
-
-      if (!response.ok) throw new Error("Failed to update request");
-
-      const result = await response.json();
-      console.log("Raw response from backend:", result);
-      console.log("Response keys:", Object.keys(result));
-      console.log("Has email_data:", 'email_data' in result);
-
-      if (status === 'approved') {
-        console.log("=== EMAIL SENDING PROCESS START ===");
-        console.log("Result from backend:", result);
-        
-        // Send approval email if email data is available
-        if (result.email_data) {
-          console.log("Email data found:", result.email_data);
-          try {
-            console.log("Calling sendProviderApprovalEmail with data:", {
-              provider_name: result.email_data.provider_name,
-              provider_email: result.email_data.provider_email,
-              one_time_password: result.email_data.one_time_password,
-              login_url: result.email_data.login_url,
-              service_category: result.email_data.service_category
-            });
-            
-            const emailSent = await sendProviderApprovalEmail({
-              provider_name: result.email_data.provider_name,
-              provider_email: result.email_data.provider_email,
-              one_time_password: result.email_data.one_time_password,
-              login_url: result.email_data.login_url,
-              service_category: result.email_data.service_category
-            });
-            
-            console.log("Email sending result:", emailSent);
-            
-            if (emailSent) {
-              console.log("✅ Email sent successfully!");
+  const handleDisputeAction = (action: "full-refund" | "partial-refund" | "uphold") => {
               toast({
-                title: "Provider Approved!",
-                description: "Application approved, provider added to the system, credentials sent via email, and removed from pending requests.",
-              });
-            } else {
-              console.log("❌ Email sending failed!");
-              toast({
-                title: "Provider Approved!",
-                description: "Application approved, provider added to the system, but email sending failed. Please contact the provider manually.",
-                variant: "destructive"
-              });
-            }
-          } catch (error) {
-            console.error('❌ Email sending error:', error);
-            console.error('Error details:', {
-              message: error.message,
-              stack: error.stack,
-              name: error.name
-            });
-            toast({
-              title: "Provider Approved!",
-              description: "Application approved, provider added to the system, but email sending failed. Please contact the provider manually.",
-              variant: "destructive"
-            });
-          }
-        } else {
-          console.log("❌ No email_data found in result:", result);
-          toast({
-            title: "Provider Approved!",
-            description: "Application approved, provider added to the system, and removed from pending requests.",
-          });
-        }
-        console.log("=== EMAIL SENDING PROCESS END ===");
-      } else if (status === 'rejected') {
-        toast({
-          title: "Application Rejected",
-          description: "Application has been rejected, documents deleted, and removed from pending requests.",
-        });
-      } else {
-        toast({
-          title: "Status Updated",
-          description: `Request status updated to ${status.replace('_', ' ')}`,
-        });
-      }
-
-      // Refresh the list
-      fetchPendingRequests();
-      setSelectedRequest(null);
-      setAdminNotes("");
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update request status",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
-      approved: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-      rejected: { color: "bg-red-100 text-red-800", icon: XCircle },
-      under_review: { color: "bg-secondary text-secondary-foreground", icon: Eye }
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    const Icon = config.icon;
-
-    return (
-      <Badge className={config.color}>
-        <Icon className="w-3 h-3 mr-1" />
-        {status.replace('_', ' ')}
-      </Badge>
-    );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      title: "Dispute Action",
+      description: `Dispute action "${action}" has been processed.`,
     });
   };
 
-  if (loading) {
+  const handlePayoutAction = (payoutId: string, action: "approve" | "deny") => {
+      toast({
+      title: action === "approve" ? "Payout Approved" : "Payout Denied",
+      description: `Payout ${action === "approve" ? "approved" : "denied"} successfully.`,
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    });
+  };
+
+  const tabs = [
+    { id: "metrics", label: "Metrics/Overview", icon: BarChart3 },
+    { id: "users", label: "Users", icon: Users },
+    { id: "jobs", label: "Jobs & Disputes", icon: Briefcase },
+    { id: "finance", label: "Finance & Payouts", icon: DollarSign },
+  ];
+
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading admin panel...</p>
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <div className="pt-32 pb-12">
+        <div className="container mx-auto px-6 lg:px-8">
+          {/* Header */}
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2 font-heading">
+                Admin Dashboard
+              </h1>
+              <p className="text-muted-foreground">
+                Platform oversight and management
+              </p>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <AdminSidebar
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        onLogout={handleLogout}
-        adminInfo={adminInfo}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="p-6">
-          {/* Dashboard Tab */}
-          {activeTab === 'dashboard' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="flex items-center gap-2"
             >
-              <div>
-                <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard</h1>
-                <p className="text-muted-foreground">Overview of your admin panel</p>
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+      </div>
+
+          {/* Tab Navigation */}
+          <div className="mb-8 border-b border-border">
+            <div className="flex flex-wrap gap-2 md:gap-4 overflow-x-auto">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+  return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                      activeTab === tab.id
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="whitespace-nowrap">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
               </div>
 
-              {/* Stats Cards */}
+          {/* Tab Content */}
+          <div className="mt-8">
+            {/* Metrics/Overview Tab */}
+            {activeTab === "metrics" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                transition={{ duration: 0.3 }}
               >
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Pending Requests</p>
-                        <p className="text-2xl font-bold text-yellow-600">
-                          {pendingRequests.filter(r => r.status === 'pending').length}
-                        </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  <Card className="p-6 border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Total Jobs Completed</span>
+                      <Briefcase className="w-5 h-5 text-primary" />
                       </div>
-                      <Clock className="h-8 w-8 text-yellow-600" />
+                    <div className="text-3xl font-bold text-foreground">{platformMetrics.totalJobsCompleted}</div>
+                  </Card>
+
+                  <Card className="p-6 border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Total Workers</span>
+                      <Users className="w-5 h-5 text-primary" />
                     </div>
-                  </CardContent>
+                    <div className="text-3xl font-bold text-foreground">{platformMetrics.totalWorkers}</div>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Total Providers</p>
-                        <p className="text-2xl font-bold text-primary">{providers.length}</p>
+                  <Card className="p-6 border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Total Clients</span>
+                      <Users className="w-5 h-5 text-primary" />
                       </div>
-                      <User className="h-8 w-8 text-primary" />
+                    <div className="text-3xl font-bold text-foreground">{platformMetrics.totalClients}</div>
+                  </Card>
+
+                  <Card className="p-6 border-border" style={{ backgroundColor: "#FFDE59" }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-foreground">Total Fees Collected</span>
+                      <DollarSign className="w-5 h-5 text-foreground" />
                     </div>
-                  </CardContent>
+                    <div className="text-3xl font-bold text-foreground">${platformMetrics.totalFeesCollected.toLocaleString()}</div>
+                </Card>
+                </div>
+
+                <Card className="p-6 border-border">
+                  <h2 className="text-xl font-bold text-foreground mb-4 font-heading">
+                    Jobs Per Week
+                  </h2>
+                  <div className="flex items-end gap-2 h-48">
+                    {platformMetrics.jobsPerDay.map((count, index) => (
+                      <div key={index} className="flex-1 flex flex-col items-center">
+                        <div
+                          className="w-full rounded-t"
+                          style={{
+                            height: `${(count / 10) * 100}%`,
+                            backgroundColor: "#0846BC",
+                            minHeight: "20px"
+                          }}
+                        />
+                        <span className="text-xs text-muted-foreground mt-2">
+                          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]}
+                        </span>
+                        <span className="text-xs font-semibold text-foreground">{count}</span>
+                      </div>
+                    ))}
+                    </div>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Total Applications</p>
-                        <p className="text-2xl font-bold">{pendingRequests.length}</p>
-                      </div>
-                      <FileText className="h-8 w-8 text-primary" />
+                <div className="mt-6">
+                  <Card className="p-6 border-border">
+                    <h2 className="text-xl font-bold text-foreground mb-4 font-heading flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                      Jobs Per Month (Last 4 Months)
+                    </h2>
+                    <div className="flex items-end gap-4 h-64">
+                      {platformMetrics.jobsPerMonth.map((count, index) => (
+                        <div key={index} className="flex-1 flex flex-col items-center">
+                          <div
+                            className="w-full rounded-t"
+                            style={{
+                              height: `${(count / 60) * 100}%`,
+                              backgroundColor: "#0846BC",
+                              minHeight: "20px"
+                            }}
+                          />
+                          <span className="text-xs text-muted-foreground mt-2">
+                            Month {index + 1}
+                          </span>
+                          <span className="text-xs font-semibold text-foreground">{count}</span>
+                        </div>
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                  </Card>
+                </div>
             </motion.div>
           )}
 
-          {/* Pending Requests Tab */}
-          {activeTab === 'pending' && (
+            {/* Users Tab */}
+            {activeTab === "users" && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <div>
-                <h1 className="text-4xl font-bold text-foreground mb-2">Pending Requests</h1>
-                <p className="text-muted-foreground">Review and manage service provider applications</p>
-              </div>
-
-              {/* Filters for Pending Requests */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex flex-col md:flex-row gap-4 mb-6"
+                transition={{ duration: 0.3 }}
               >
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                <div className="mb-6 space-y-4">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name, email, or service category..."
+                        placeholder="Search users..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
-                
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Filter by status" />
+                    <Select value={roleFilter} onValueChange={setRoleFilter}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Filter by Role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="under_review">Under Review</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        <SelectItem value="Worker">Worker</SelectItem>
+                        <SelectItem value="Client">Client</SelectItem>
                   </SelectContent>
                 </Select>
-              </motion.div>
+                    <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Filter by Rating" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Ratings</SelectItem>
+                        <SelectItem value="high">High (4.5+)</SelectItem>
+                        <SelectItem value="low">Low (&lt;3.5)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={flagFilter} onValueChange={setFlagFilter}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Filter by Flag" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Flags</SelectItem>
+                        <SelectItem value="None">None</SelectItem>
+                        <SelectItem value="Low Rating">Low Rating</SelectItem>
+                        <SelectItem value="Suspicious Activity">Suspicious Activity</SelectItem>
+                      </SelectContent>
+                    </Select>
+                                </div>
+                              </div>
 
-              {/* Pending Requests List */}
+                <Card className="border-border">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Name</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Email</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Role</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Rating</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Activity</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Flag Status</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredUsers.map((user) => (
+                          <tr key={user.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+                            <td className="py-3 px-4 text-sm text-foreground font-medium">{user.name}</td>
+                            <td className="py-3 px-4 text-sm text-muted-foreground">{user.email}</td>
+                            <td className="py-3 px-4">
+                              <Badge variant="outline" className={
+                                user.role === "Worker" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-green-50 text-green-700 border-green-200"
+                              }>
+                                {user.role}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-foreground">
+                              {user.rating ? (
+                                <div className="flex items-center gap-1">
+                                  <span>{user.rating.toFixed(1)}</span>
+                                  <span className="text-yellow-500">★</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">N/A</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-muted-foreground">
+                              {user.role === "Worker" ? `${user.jobsCompleted} jobs` : `${user.jobsPosted} posts`}
+                            </td>
+                            <td className="py-3 px-4">
+                              {user.flagStatus === "None" ? (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                  None
+                                    </Badge>
+                              ) : user.flagStatus === "Low Rating" ? (
+                                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                                  Low Rating
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                  Suspicious
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                                </div>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Jobs & Disputes Tab */}
+            {activeTab === "jobs" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-4"
+                transition={{ duration: 0.3 }}
               >
-                {filteredRequests.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No requests found</h3>
-                      <p className="text-muted-foreground">
-                        {searchTerm || statusFilter !== "all" 
-                          ? "Try adjusting your search or filter criteria"
-                          : "No pending requests at the moment"
-                        }
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  filteredRequests.map((request, index) => (
-                    <motion.div
-                      key={request.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 * index }}
-                    >
-                      <Card className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                                  <User className="w-6 h-6 text-primary" />
-                                </div>
-                                <div>
-                                  <h3 className="font-semibold text-lg">
-                                    {request.first_name} {request.last_name}
-                                  </h3>
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Mail className="w-4 h-4" />
-                                    {request.email}
-                                  </div>
-                                </div>
-                                {getStatusBadge(request.status)}
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Phone className="w-4 h-4 text-muted-foreground" />
-                                  {request.phone}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                                  {request.location || "Not specified"}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                                  {formatDate(request.created_at)}
-                                </div>
-                              </div>
-
-                              <div className="mb-4">
-                                <h4 className="font-medium mb-2">Service Categories:</h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {request.service_category.map((category, idx) => (
-                                    <Badge key={idx} variant="secondary">
-                                      {category}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {request.bio && (
-                                <div className="mb-4">
-                                  <h4 className="font-medium mb-2">Bio:</h4>
-                                  <p className="text-sm text-muted-foreground line-clamp-2">
-                                    {request.bio}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-col gap-2 ml-4">
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="outline" size="sm">
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    View Details
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                                  <DialogHeader>
-                                    <DialogTitle>Application Details</DialogTitle>
-                                    <DialogDescription>
-                                      Review the complete application details
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  
-                                  <div className="space-y-6">
-                                    {/* Basic Information */}
-                                    <div>
-                                      <h3 className="font-semibold mb-3">Basic Information</h3>
-                                      <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                          <label className="text-sm font-medium text-muted-foreground">Name</label>
-                                          <p>{request.first_name} {request.last_name}</p>
-                                        </div>
-                                        <div>
-                                          <label className="text-sm font-medium text-muted-foreground">Email</label>
-                                          <p>{request.email}</p>
-                                        </div>
-                                        <div>
-                                          <label className="text-sm font-medium text-muted-foreground">Phone</label>
-                                          <p>{request.phone}</p>
-                                        </div>
-                                        <div>
-                                          <label className="text-sm font-medium text-muted-foreground">Location</label>
-                                          <p>{request.location || "Not specified"}</p>
-                                        </div>
+                <div className="mb-6 space-y-4">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <Select value={jobStatusFilter} onValueChange={setJobStatusFilter}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Filter by Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="Posted">Posted</SelectItem>
+                        <SelectItem value="Accepted">Accepted</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Submitted">Submitted</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={suspiciousFilter} onValueChange={setSuspiciousFilter}>
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Filter Suspicious" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Jobs</SelectItem>
+                        <SelectItem value="suspicious">Suspicious Only</SelectItem>
+                        <SelectItem value="normal">Normal Only</SelectItem>
+                      </SelectContent>
+                    </Select>
                                       </div>
                                     </div>
 
-                                    {/* Service Information */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Jobs List */}
                                     <div>
-                                      <h3 className="font-semibold mb-3">Service Information</h3>
-                                      <div className="space-y-3">
-                                        <div>
-                                          <label className="text-sm font-medium text-muted-foreground">Service Categories</label>
-                                          <div className="flex flex-wrap gap-2 mt-1">
-                                            {request.service_category.map((category, idx) => (
-                                              <Badge key={idx} variant="secondary">
-                                                {category}
+                    <h2 className="text-xl font-bold text-foreground mb-4 font-heading">
+                      All Jobs ({filteredJobs.length})
+                    </h2>
+                    <Card className="border-border">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-border">
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Job Title</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Status</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Suspicious</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Dispute</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredJobs.map((job) => (
+                              <tr key={job.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+                                <td className="py-3 px-4 text-sm text-foreground">{job.title}</td>
+                                <td className="py-3 px-4">
+                                  <Badge variant="outline" className={
+                                    job.status === "Completed" ? "bg-green-50 text-green-700 border-green-200" :
+                                    job.status === "In Progress" ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
+                                    "bg-blue-50 text-blue-700 border-blue-200"
+                                  }>
+                                    {job.status}
                                               </Badge>
-                                            ))}
+                                </td>
+                                <td className="py-3 px-4">
+                                  {job.suspicious ? (
+                                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                      Yes
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      No
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  {job.disputeStatus === "Open" ? (
+                                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                      Open
+                                    </Badge>
+                                  ) : job.disputeStatus === "Closed" ? (
+                                    <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                                      Closed
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">None</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                                           </div>
+                    </Card>
                                         </div>
-                                        {request.experience && (
+
+                  {/* Handling Disputes */}
                                           <div>
-                                            <label className="text-sm font-medium text-muted-foreground">Experience</label>
-                                            <p>{request.experience}</p>
-                                          </div>
-                                        )}
-                                        {request.bio && (
+                    <h2 className="text-xl font-bold text-foreground mb-4 font-heading flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-orange-600" />
+                      Handling Disputes
+                    </h2>
+                    <Card className="p-6 border-border">
+                      <div className="space-y-6">
+                        {/* Job Details */}
                                           <div>
-                                            <label className="text-sm font-medium text-muted-foreground">Bio</label>
-                                            <p className="text-sm">{request.bio}</p>
+                          <h3 className="font-semibold text-foreground mb-2">Job Details</h3>
+                          <div className="space-y-2 text-sm">
+                            <div><span className="text-muted-foreground">Title:</span> <span className="font-medium">{disputeData.jobTitle}</span></div>
+                            <div><span className="text-muted-foreground">Client:</span> <span className="font-medium">{disputeData.client}</span></div>
+                            <div><span className="text-muted-foreground">Worker:</span> <span className="font-medium">{disputeData.worker}</span></div>
+                            <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">${disputeData.amount.toFixed(2)}</span></div>
+                            <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{formatDate(disputeData.date)}</span></div>
+                            <div className="mt-2">
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                {disputeData.aiCheckResult}
+                              </Badge>
                                           </div>
-                                        )}
                                       </div>
                                     </div>
 
-                                    {/* Pricing Information */}
-                                    {request.jobs_pricing && Object.keys(request.jobs_pricing).length > 0 && (
+                        {/* Chat History */}
                                       <div>
-                                        <h3 className="font-semibold mb-3">Pricing Information</h3>
-                                        <div className="space-y-3">
-                                          {Object.entries(request.jobs_pricing).map(([category, jobs]) => (
-                                            <div key={category}>
-                                              <h4 className="font-medium text-sm capitalize">{category}</h4>
-                                              <div className="grid grid-cols-2 gap-2 mt-1">
-                                                {Array.isArray(jobs) && jobs.map((job: any, idx: number) => (
-                                                  <div key={idx} className="text-sm">
-                                                    <span className="text-muted-foreground">{job.job}:</span>
-                                                    <span className="ml-1 font-medium">Rs. {job.price}</span>
+                          <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4" />
+                            Chat History
+                          </h3>
+                          <div className="space-y-3 max-h-64 overflow-y-auto border border-border rounded-lg p-4 bg-secondary/30">
+                            {disputeData.chatHistory.map((chat, index) => (
+                              <div key={index} className={`${chat.sender === "Client" ? "text-left" : "text-right"}`}>
+                                <div className={`inline-block max-w-[80%] p-2 rounded-lg ${
+                                  chat.sender === "Client" 
+                                    ? "bg-background border border-border" 
+                                    : "bg-primary text-white"
+                                }`}>
+                                  <div className="text-xs font-semibold mb-1">{chat.sender}</div>
+                                  <div className="text-sm">{chat.message}</div>
+                                  <div className={`text-xs mt-1 ${
+                                    chat.sender === "Client" ? "text-muted-foreground" : "text-white/70"
+                                  }`}>
+                                    {formatDate(chat.timestamp)}
                                                   </div>
-                                                ))}
                                               </div>
                                             </div>
                                           ))}
                                         </div>
                                       </div>
-                                    )}
 
-                                    {/* Documents */}
+                        {/* Proof Images */}
                                     <div>
-                                      <h3 className="font-semibold mb-3">Documents</h3>
-                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {request.profile_image_url && (
-                                          <div>
-                                            <label className="text-sm font-medium text-muted-foreground">Profile Image</label>
-                                            <div className="relative group cursor-pointer mt-1">
-                                              <img 
-                                                src={request.profile_image_url} 
-                                                alt="Profile" 
-                                                className="w-full h-32 object-cover rounded border-2 border-transparent group-hover:border-primary transition-colors"
-                                              />
-                                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                                                <span className="text-white text-sm font-medium">Click to View</span>
-                                              </div>
-                                              <Dialog>
-                                                <DialogTrigger asChild>
-                                                  <div className="absolute inset-0 cursor-pointer"></div>
-                                                </DialogTrigger>
-                                                <DialogContent className="max-w-4xl max-h-[80vh]">
-                                                  <DialogHeader>
-                                                    <DialogTitle>Profile Image</DialogTitle>
-                                                  </DialogHeader>
-                                                  <div className="flex justify-center">
-                                                    <img 
-                                                      src={request.profile_image_url} 
-                                                      alt="Profile" 
-                                                      className="max-w-full max-h-[60vh] object-contain rounded"
-                                                    />
-                                                  </div>
-                                                </DialogContent>
-                                              </Dialog>
-                                            </div>
-                                          </div>
-                                        )}
-                                        {request.cnic_front_url && (
-                                          <div>
-                                            <label className="text-sm font-medium text-muted-foreground">CNIC Front</label>
-                                            <div className="relative group cursor-pointer mt-1">
-                                              <img 
-                                                src={request.cnic_front_url} 
-                                                alt="CNIC Front" 
-                                                className="w-full h-32 object-cover rounded border-2 border-transparent group-hover:border-primary transition-colors"
-                                              />
-                                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                                                <span className="text-white text-sm font-medium">Click to View</span>
-                                              </div>
-                                              <Dialog>
-                                                <DialogTrigger asChild>
-                                                  <div className="absolute inset-0 cursor-pointer"></div>
-                                                </DialogTrigger>
-                                                <DialogContent className="max-w-4xl max-h-[80vh]">
-                                                  <DialogHeader>
-                                                    <DialogTitle>CNIC Front</DialogTitle>
-                                                  </DialogHeader>
-                                                  <div className="flex justify-center">
-                                                    <img 
-                                                      src={request.cnic_front_url} 
-                                                      alt="CNIC Front" 
-                                                      className="max-w-full max-h-[60vh] object-contain rounded"
-                                                    />
-                                                  </div>
-                                                </DialogContent>
-                                              </Dialog>
-                                            </div>
-                                          </div>
-                                        )}
-                                        {request.cnic_back_url && (
-                                          <div>
-                                            <label className="text-sm font-medium text-muted-foreground">CNIC Back</label>
-                                            <div className="relative group cursor-pointer mt-1">
-                                              <img 
-                                                src={request.cnic_back_url} 
-                                                alt="CNIC Back" 
-                                                className="w-full h-32 object-cover rounded border-2 border-transparent group-hover:border-primary transition-colors"
-                                              />
-                                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                                                <span className="text-white text-sm font-medium">Click to View</span>
-                                              </div>
-                                              <Dialog>
-                                                <DialogTrigger asChild>
-                                                  <div className="absolute inset-0 cursor-pointer"></div>
-                                                </DialogTrigger>
-                                                <DialogContent className="max-w-4xl max-h-[80vh]">
-                                                  <DialogHeader>
-                                                    <DialogTitle>CNIC Back</DialogTitle>
-                                                  </DialogHeader>
-                                                  <div className="flex justify-center">
-                                                    <img 
-                                                      src={request.cnic_back_url} 
-                                                      alt="CNIC Back" 
-                                                      className="max-w-full max-h-[60vh] object-contain rounded"
-                                                    />
-                                                  </div>
-                                                </DialogContent>
-                                              </Dialog>
-                                            </div>
-                                          </div>
-                                        )}
+                          <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                            <ImageIcon className="w-4 h-4" />
+                            Proof Images
+                          </h3>
+                          <div className="grid grid-cols-3 gap-2">
+                            {disputeData.proofImages.map((image, index) => (
+                              <a
+                                key={index}
+                                href={image}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="aspect-square rounded-lg border border-border bg-secondary/30 flex items-center justify-center hover:bg-secondary transition-colors"
+                              >
+                                <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                              </a>
+                            ))}
                                       </div>
                                     </div>
 
                                     {/* Admin Actions */}
-                                    {request.status === 'pending' && (
                                       <div>
-                                        <h3 className="font-semibold mb-3">Admin Actions</h3>
-                                        <div className="space-y-4">
-                                          <div>
-                                            <label className="text-sm font-medium text-muted-foreground">Admin Notes</label>
-                                            <Textarea
-                                              placeholder="Add notes about this application..."
-                                              value={adminNotes}
-                                              onChange={(e) => setAdminNotes(e.target.value)}
-                                              className="mt-1"
-                                            />
-                                          </div>
-                                          <div className="flex gap-2">
+                          <h3 className="font-semibold text-foreground mb-3">Admin Actions</h3>
+                          <div className="flex flex-col gap-2">
                                             <Button
-                                              onClick={() => updateRequestStatus(request.id, 'approved', adminNotes)}
-                                              disabled={isUpdating}
-                                              className="flex-1 bg-green-600 hover:bg-green-700"
-                                            >
-                                              <CheckCircle className="w-4 h-4 mr-2" />
-                                              Approve & Move to Providers
-                                            </Button>
-                                            <Button
-                                              onClick={() => updateRequestStatus(request.id, 'rejected', adminNotes)}
-                                              disabled={isUpdating}
                                               variant="destructive"
-                                              className="flex-1"
+                              className="w-full"
+                              onClick={() => handleDisputeAction("full-refund")}
                                             >
-                                              <XCircle className="w-4 h-4 mr-2" />
-                                              Reject & Remove
+                              Full Refund
                                             </Button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Status Information */}
-                                    {request.status !== 'pending' && (
-                                      <div>
-                                        <h3 className="font-semibold mb-3">Status Information</h3>
-                                        <div className="space-y-2">
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium text-muted-foreground">Status:</span>
-                                            {getStatusBadge(request.status)}
-                                          </div>
-                                          {request.admin_notes && (
-                                            <div>
-                                              <span className="text-sm font-medium text-muted-foreground">Admin Notes:</span>
-                                              <p className="text-sm mt-1">{request.admin_notes}</p>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-
-                              {request.status === 'pending' && (
-                                <div className="flex gap-2">
                                   <Button
-                                    size="sm"
-                                    onClick={() => updateRequestStatus(request.id, 'approved')}
-                                    disabled={isUpdating}
-                                    className="bg-green-600 hover:bg-green-700"
-                                    title="Approve and move to providers (removes from pending)"
-                                  >
-                                    <CheckCircle className="w-4 h-4" />
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => handleDisputeAction("partial-refund")}
+                            >
+                              Partial Refund
                                   </Button>
                                   <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => updateRequestStatus(request.id, 'rejected')}
-                                    disabled={isUpdating}
-                                    title="Reject, delete documents, and remove from pending"
-                                  >
-                                    <XCircle className="w-4 h-4" />
+                              className="w-full"
+                              style={{ backgroundColor: "#0846BC", color: "#FFFFFF" }}
+                              onClick={() => handleDisputeAction("uphold")}
+                            >
+                              Uphold Payout
                                   </Button>
                                 </div>
-                              )}
                             </div>
                           </div>
-                        </CardContent>
                       </Card>
-                    </motion.div>
-                  ))
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* Providers Tab */}
-          {activeTab === 'providers' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <div>
-                <h1 className="text-4xl font-bold text-foreground mb-2">Approved Providers</h1>
-                <p className="text-muted-foreground">Manage and view approved service providers</p>
               </div>
-
-              {/* Filters for Providers */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex flex-col md:flex-row gap-4 mb-6"
-              >
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name, service category, or location..."
-                    value={providerSearchTerm}
-                    onChange={(e) => setProviderSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
                 </div>
               </motion.div>
+            )}
 
-              {/* Providers List */}
+            {/* Finance & Payouts Tab */}
+            {activeTab === "finance" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-4"
+                transition={{ duration: 0.3 }}
               >
-                {filteredProviders.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No providers found</h3>
-                      <p className="text-muted-foreground">
-                        {providerSearchTerm 
-                          ? "Try adjusting your search criteria"
-                          : "No approved providers at the moment"
-                        }
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  filteredProviders.map((provider, index) => (
-                    <motion.div
-                      key={provider.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 * index }}
-                    >
-                      <Card className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                                  <User className="w-6 h-6 text-primary" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <Card className="p-6 border-border" style={{ backgroundColor: "#FFDE59" }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-foreground">Total Fees Collected</span>
+                      <DollarSign className="w-5 h-5 text-foreground" />
                                 </div>
-                                <div>
-                                  <h3 className="font-semibold text-lg">{provider.name}</h3>
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <MapPin className="w-4 h-4" />
-                                    {provider.location || "Not specified"}
+                    <div className="text-3xl font-bold text-foreground">
+                      ${platformMetrics.totalFeesCollected.toLocaleString()}
                                   </div>
+                  </Card>
+
+                  <Card className="p-6 border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Total Payout to Workers</span>
+                      <CreditCard className="w-5 h-5 text-primary" />
                                 </div>
-                                <Badge variant="default" className="bg-green-100 text-green-800">
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  Verified
+                    <div className="text-3xl font-bold text-foreground">
+                      ${(platformMetrics.totalFeesCollected * 0.70).toLocaleString()}
+                                </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      70% of total fees
+                                </div>
+                  </Card>
+                              </div>
+
+                <Card className="border-border">
+                  <div className="p-6 border-b border-border">
+                    <h2 className="text-xl font-bold text-foreground font-heading">
+                      Recent Payouts
+                    </h2>
+                              </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Worker</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Job Title</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Amount</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Status</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payoutList.map((payout) => (
+                          <tr key={payout.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
+                            <td className="py-3 px-4 text-sm text-foreground font-medium">{payout.workerName}</td>
+                            <td className="py-3 px-4 text-sm text-muted-foreground">{payout.jobTitle}</td>
+                            <td className="py-3 px-4 text-sm font-semibold text-primary">${payout.amount.toFixed(2)}</td>
+                            <td className="py-3 px-4">
+                              {payout.status === "Approved" ? (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                  Approved
                                 </Badge>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Star className="w-4 h-4 text-yellow-500" />
-                                  {provider.rating?.toFixed(1) || '0'} ({provider.reviews_count} reviews)
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                                  {formatDate(provider.created_at)}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <FileText className="w-4 h-4 text-muted-foreground" />
-                                  {provider.service_category}
-                                </div>
-                              </div>
-
-                              <div className="mb-4">
-                                <h4 className="font-medium mb-2">Bio:</h4>
-                                <p className="text-sm text-muted-foreground">{provider.bio || "No bio provided"}</p>
-                              </div>
-
-                              <div className="flex items-center gap-2">
+                              ) : (
+                                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                                  Pending
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-muted-foreground">{formatDate(payout.date)}</td>
+                            <td className="py-3 px-4">
+                              {payout.status === "Pending" && (
+                                <div className="flex gap-2">
                                 <Button
+                                    size="sm"
                                   variant="outline"
+                                    onClick={() => handlePayoutAction(payout.id, "approve")}
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
                                   size="sm"
-                                  onClick={() => setSelectedProvider(provider)}
-                                  className="flex items-center gap-2"
+                                    variant="outline"
+                                    onClick={() => handlePayoutAction(payout.id, "deny")}
+                                    className="text-red-600 hover:text-red-700"
                                 >
-                                  <Eye className="w-4 h-4" />
-                                  View Details
+                                    Deny
                                 </Button>
                               </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* Analytics Tab */}
-          {activeTab === 'analytics' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <div>
-                <h1 className="text-4xl font-bold text-foreground mb-2">Analytics</h1>
-                <p className="text-muted-foreground">View reports and analytics</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5" />
-                      Application Statistics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <span>Total Applications</span>
-                        <span className="font-semibold">{pendingRequests.length}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Pending Review</span>
-                        <span className="font-semibold text-yellow-600">
-                          {pendingRequests.filter(r => r.status === 'pending').length}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Approved</span>
-                        <span className="font-semibold text-green-600">
-                          {pendingRequests.filter(r => r.status === 'approved').length}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Rejected</span>
-                        <span className="font-semibold text-red-600">
-                          {pendingRequests.filter(r => r.status === 'rejected').length}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      Provider Statistics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <span>Total Providers</span>
-                        <span className="font-semibold">{providers.length}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Verified Providers</span>
-                        <span className="font-semibold text-green-600">
-                          {providers.filter(p => p.is_verified).length}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Average Rating</span>
-                        <span className="font-semibold">
-                          {providers.length > 0 
-                            ? (providers.reduce((sum, p) => sum + p.rating, 0) / providers.length).toFixed(1)
-                            : '0.0'
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      Recent Activity
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="text-sm">
-                        <div className="font-medium">Latest Applications</div>
-                        <div className="text-muted-foreground">
-                          {pendingRequests.slice(0, 3).map(request => (
-                            <div key={request.id} className="mt-1">
-                              {request.first_name} {request.last_name} - {formatDate(request.created_at)}
-                            </div>
-                          ))}
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
                 </Card>
-              </div>
             </motion.div>
-          )}
-
-          {/* Settings Tab */}
-          {activeTab === 'settings' && (
-            <AdminSettings 
-              adminInfo={adminInfo} 
-              onUpdate={handleAdminUpdate}
-            />
           )}
         </div>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 };

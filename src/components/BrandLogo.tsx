@@ -11,7 +11,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ className }) => {
       className={className}
       viewBox="0 0 64 64"
       role="img"
-      aria-label="UstaadOnCall logo"
+      aria-label="ThoseJobs logo"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>

@@ -173,6 +173,46 @@ const UserLogin = () => {
       console.log("=== USER LOGIN START ===");
       console.log("Login attempt for email:", formData.email);
 
+      // Hardcoded requester credentials check
+      const REQUESTER_EMAIL = "khizarahmed3@gmail.com";
+      const REQUESTER_PASSWORD = "khizar123";
+
+      if (formData.email === REQUESTER_EMAIL && formData.password === REQUESTER_PASSWORD) {
+        // Create mock requester/client data for hardcoded login
+        const mockRequesterData = {
+          id: "requester-001",
+          email: REQUESTER_EMAIL,
+          name: "Khizar",
+          phone: "(713) 555-1234",
+          address: "Houston, TX",
+          isProvider: false,
+          providerId: null
+        };
+
+        // Generate token data with timestamp
+        const tokenData = {
+          token: "mock-requester-token-" + Date.now(),
+          timestamp: Date.now()
+        };
+
+        // Store requester info and token data in localStorage
+        localStorage.setItem('user_info', JSON.stringify(mockRequesterData));
+        localStorage.setItem('user_token', tokenData.token);
+        localStorage.setItem('user_token_data', JSON.stringify(tokenData));
+
+        // Dispatch custom event to notify Navigation component
+        window.dispatchEvent(new CustomEvent('auth-state-changed'));
+
+        toast({
+          title: "Login Successful!",
+          description: "Welcome to your requester dashboard.",
+        });
+
+        navigate('/requester-dashboard');
+        return;
+      }
+
+      // Regular user login flow
       // First, try to authenticate with Supabase Auth
       console.log("🔄 Authenticating with Supabase Auth...");
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -591,7 +631,7 @@ const UserLogin = () => {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Home className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl">UstaadOnCall</span>
+              <span className="font-bold text-xl">ThoseJobs</span>
             </Link>
 
             {/* Right side - empty for balance */}
@@ -620,7 +660,7 @@ const UserLogin = () => {
               </motion.div>
               <CardTitle className="text-2xl font-bold">{t("Welcome Back")}</CardTitle>
               <CardDescription>
-                {t("Sign in to your UstaadOnCall account")}
+                {t("Sign in to your ThoseJobs account")}
               </CardDescription>
             </CardHeader>
             <CardContent>

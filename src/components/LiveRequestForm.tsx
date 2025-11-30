@@ -14,6 +14,7 @@ import { createLiveRequest } from "@/lib/liveRequestService";
 import { getServiceCategoryNames } from "@/lib/serviceCategories";
 import GoogleMapsAutocomplete from "@/components/GoogleMapsAutocomplete";
 import { AlertCircle, MapPin, DollarSign, Search, Navigation, Loader2 } from "lucide-react";
+import { isInHoustonArea, isHoustonAddress } from "@/lib/locationUtils";
 
 const formSchema = z.object({
   service_category: z.string().min(1, "Service category is required"),
@@ -130,6 +131,27 @@ const LiveRequestForm = ({ onSuccess, onCancel }: LiveRequestFormProps) => {
   const onSubmit = async (data: FormData) => {
     try {
       setIsSubmitting(true);
+
+      // Houston-only validation (MVP constraint)
+      if (data.latitude && data.longitude) {
+        if (!isInHoustonArea(data.latitude, data.longitude)) {
+          toast({
+            title: "Location Outside Houston Area",
+            description: "ThoseJobs.com is currently only available in the Houston area. Please select a location within Houston, TX.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (data.location && !isHoustonAddress(data.location)) {
+        toast({
+          title: "Location Outside Houston Area",
+          description: "ThoseJobs.com is currently only available in the Houston area. Please enter a Houston, TX address.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       // Set urgency to urgent and calculate expiry (2 hours)
       const expiryTime = new Date(Date.now() + 2 * 60 * 60 * 1000);

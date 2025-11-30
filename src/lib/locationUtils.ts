@@ -102,15 +102,40 @@ export function requestLocationPermission(): Promise<boolean> {
 // Get Google Maps API key from environment
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
 
+// Houston area boundaries (approximate)
+const HOUSTON_BOUNDS = {
+  north: 30.1,  // North boundary
+  south: 29.5,  // South boundary
+  east: -95.0,  // East boundary
+  west: -95.8   // West boundary
+};
+
+// Check if coordinates are within Houston area
+export function isInHoustonArea(latitude: number, longitude: number): boolean {
+  return (
+    latitude >= HOUSTON_BOUNDS.south &&
+    latitude <= HOUSTON_BOUNDS.north &&
+    longitude >= HOUSTON_BOUNDS.west &&
+    longitude <= HOUSTON_BOUNDS.east
+  );
+}
+
+// Check if address string contains Houston area indicators
+export function isHoustonAddress(address: string): boolean {
+  const houstonIndicators = ['houston', 'tx', 'texas', '77001', '77002', '77003', '77004', '77005', '77006', '77007', '77008', '77009', '77010'];
+  const lowerAddress = address.toLowerCase();
+  return houstonIndicators.some(indicator => lowerAddress.includes(indicator));
+}
+
 // Geocode address to coordinates using Google Geocoding API
 export async function geocodeAddress(address: string): Promise<Location | null> {
   try {
     console.log('Geocoding address:', address);
     
-    // Add "Pakistan" to the address if not already present for better results
+    // Add "Houston, TX" to the address if not already present for better results
     let searchAddress = address;
-    if (!address.toLowerCase().includes('pakistan')) {
-      searchAddress = `${address}, Pakistan`;
+    if (!address.toLowerCase().includes('houston') && !address.toLowerCase().includes('tx')) {
+      searchAddress = `${address}, Houston, TX`;
     }
     
     const response = await fetch(
@@ -140,7 +165,7 @@ export async function geocodeAddress(address: string): Promise<Location | null> 
       
       const cityResponse = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-          `${cityName}, Pakistan`
+          `${cityName}, Houston, TX`
         )}&key=${GOOGLE_MAPS_API_KEY}`
       );
       const cityData = await cityResponse.json();

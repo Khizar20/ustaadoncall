@@ -31,6 +31,53 @@ const ProviderLogin = () => {
     setIsLoading(true);
 
     try {
+      // Hardcoded worker credentials check
+      const WORKER_EMAIL = "khizarahmed3@gmail.com";
+      const WORKER_PASSWORD = "khizar123";
+
+      if (formData.email === WORKER_EMAIL && formData.password === WORKER_PASSWORD) {
+        // Create mock provider/worker data for hardcoded login
+        const mockWorkerData = {
+          id: "worker-001",
+          name: "Khizar",
+          email: WORKER_EMAIL,
+          phone: "(713) 555-1234",
+          location: "Houston, TX",
+          service_category: "Worker",
+          bio: "Reliable Gig Doer. 5.0 Stars. 45 Jobs Completed.",
+          experience: "5+ years",
+          rating: 5.0,
+          reviews_count: 45,
+          is_verified: true,
+          profile_image: null,
+          jobs_pricing: {},
+          created_at: new Date().toISOString()
+        };
+
+        // Generate token data with timestamp
+        const tokenData = {
+          token: "mock-worker-token-" + Date.now(),
+          timestamp: Date.now()
+        };
+
+        // Store worker info and token data in localStorage
+        localStorage.setItem('provider_info', JSON.stringify(mockWorkerData));
+        localStorage.setItem('provider_token', tokenData.token);
+        localStorage.setItem('provider_token_data', JSON.stringify(tokenData));
+
+        // Dispatch custom event to notify Navigation component
+        window.dispatchEvent(new CustomEvent('auth-state-changed'));
+
+        toast({
+          title: "Login Successful!",
+          description: "Welcome to your worker dashboard.",
+        });
+
+        navigate('/worker-dashboard');
+        return;
+      }
+
+      // Regular provider login flow
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password
@@ -116,7 +163,7 @@ const ProviderLogin = () => {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Home className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl">UstaadOnCall</span>
+              <span className="font-bold text-xl">ThoseJobs</span>
             </Link>
 
             {/* Right side - empty for balance */}
@@ -143,9 +190,9 @@ const ProviderLogin = () => {
               >
                 <User className="w-8 h-8 text-primary" />
               </motion.div>
-              <CardTitle className="text-2xl font-bold">Provider Login</CardTitle>
+              <CardTitle className="text-2xl font-bold">Worker Login</CardTitle>
               <CardDescription>
-                Sign in to your provider dashboard
+                Sign in to your worker dashboard
               </CardDescription>
             </CardHeader>
             <CardContent>

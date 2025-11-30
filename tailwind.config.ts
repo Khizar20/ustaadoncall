@@ -64,9 +64,16 @@ export default {
 				}
 			},
 			fontFamily: {
-				// Prefer Formular, fall back to Poppins for punctuation via unicode-range
-				'heading': ['Formular', 'Poppins', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
-				'body': ['Formular', 'Poppins', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
+				// ThoseJobs.com Typography: Bold rounded sans for headings, clean sans for body
+				'heading': ['Poppins', 'Montserrat', 'system-ui', 'Segoe UI', 'sans-serif'],
+				'body': ['Inter', 'Roboto', 'system-ui', 'Segoe UI', 'sans-serif'],
+			},
+			colors: {
+				...require('tailwindcss/colors'),
+				'tj-yellow': '#FFDE59',
+				'tj-cream': '#F4E4C2',
+				'tj-blue': '#0846BC',
+				'tj-dark': '#05070A',
 			},
 			fontSize: {
 				'hero': ['clamp(3rem, 8vw, 6rem)', { lineHeight: '0.9' }],

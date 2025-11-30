@@ -137,8 +137,8 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
               <div className="flex items-center gap-8">
                 {/* Logo */}
                 <Link to="/" className="flex items-center gap-2">
-                  <img src={logoSrc} alt="UstaadOnCall" className="h-10 w-auto md:h-12 object-contain shrink-0" />
-                  <span className="font-bold text-xl">UstaadOnCall</span>
+                  <img src={logoSrc} alt="ThoseJobs" className="h-10 w-auto md:h-12 object-contain shrink-0" />
+                  <span className="font-bold text-xl">ThoseJobs</span>
                 </Link>
 
                 {/* Desktop Navigation */}
@@ -161,7 +161,7 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
                         : 'text-white/85 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    Services
+                    Jobs
                   </Link>
                   <Link 
                     to="/about" 
@@ -300,7 +300,7 @@ const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
                     }`}
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    Services
+                    Jobs
                   </Link>
                   <Link 
                     to="/about" 

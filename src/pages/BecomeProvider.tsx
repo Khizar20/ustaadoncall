@@ -576,7 +576,7 @@ const BecomeProvider = () => {
               ))}
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8">
-              {t("Turn your skills into a thriving business")}. {t("Join thousands of professionals who've grown their income with UstaadOnCall")}.
+              {t("Turn your skills into a thriving business")}. {t("Join thousands of professionals who've grown their income with ThoseJobs")}.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button variant="hero" size="lg" onClick={() => document.getElementById('application')?.scrollIntoView({ behavior: 'smooth' })}>
@@ -595,7 +595,7 @@ const BecomeProvider = () => {
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="font-heading font-bold text-display text-foreground mb-4">
-              {t("Why Choose UstaadOnCall?")}
+              {t("Why Choose ThoseJobs?")}
             </h2>
             <p className="text-xl text-muted-foreground">
               {t("We provide everything you need to succeed as a service professional")}

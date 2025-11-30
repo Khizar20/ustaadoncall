@@ -105,7 +105,7 @@ const About = () => {
             
             <div className="prose prose-lg max-w-none text-muted-foreground space-y-6">
               <p className="text-xl leading-relaxed">
-                UstaadOnCall was born from a simple frustration: finding reliable, quality service providers shouldn't be a gamble. Too many people have experienced the disappointment of poor service, unreliable providers, or unexpected costs.
+                ThoseJobs was born from a simple frustration: finding reliable, quality service providers shouldn't be a gamble. Too many people have experienced the disappointment of poor service, unreliable providers, or unexpected costs.
               </p>
               
               <p className="text-xl leading-relaxed">

@@ -8,7 +8,7 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {/* Brand */}
           <div className="space-y-3 md:space-y-4">
-            <h3 className="font-heading font-bold text-lg md:text-xl text-foreground">UstaadOnCall</h3>
+            <h3 className="font-heading font-bold text-lg md:text-xl text-foreground">ThoseJobs</h3>
             <p className="text-sm md:text-base text-muted-foreground">
               Premium local services delivered by trusted professionals. Your convenience, our priority.
             </p>
@@ -24,7 +24,7 @@ export function Footer() {
             <h4 className="font-semibold text-foreground text-sm md:text-base">Quick Links</h4>
             <nav className="flex flex-col space-y-1 md:space-y-2">
               <Link to="/services" className="text-sm md:text-base text-muted-foreground hover:text-primary transition-colors">
-                Our Services
+                Jobs
               </Link>
               <Link to="/about" className="text-sm md:text-base text-muted-foreground hover:text-primary transition-colors">
                 About Us
@@ -56,11 +56,11 @@ export function Footer() {
             <div className="space-y-2 md:space-y-3">
               <div className="flex items-center space-x-2">
                 <Phone className="h-3 w-3 md:h-4 md:w-4 text-primary" />
-                <span className="text-sm md:text-base text-muted-foreground">+92 3180542026</span>
+                <span className="text-sm md:text-base text-muted-foreground">(713) 555-1234</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="h-3 w-3 md:h-4 md:w-4 text-primary" />
-                <span className="text-sm md:text-base text-muted-foreground">hello@ustaadonca­ll.com</span>
+                <span className="text-sm md:text-base text-muted-foreground">hello@thosejobs.com</span>
               </div>
             </div>
           </div>
@@ -68,7 +68,7 @@ export function Footer() {
 
         <div className="border-t border-border mt-6 md:mt-8 pt-6 md:pt-8 text-center">
           <p className="text-xs md:text-sm text-muted-foreground">
-            © 2024 UstaadOnCall. All rights reserved. Premium local services platform.
+            © 2024 ThoseJobs. All rights reserved. Premium local services platform.
           </p>
         </div>
       </div>

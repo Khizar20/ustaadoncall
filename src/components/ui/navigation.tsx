@@ -13,7 +13,7 @@ import NotificationDropdown from "@/components/NotificationDropdown";
 
 const navigationItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Services", href: "/services", icon: Sparkles },
+  { name: "Jobs", href: "/services", icon: Sparkles },
   { name: "About", href: "/about", icon: Shield },
   { name: "Contact", href: "/contact", icon: Settings },
 ];
@@ -269,7 +269,7 @@ export function Navigation() {
             "flex items-center justify-between h-14 md:h-16 rounded-2xl md:rounded-full px-3 md:px-6 font-light",
             scrolled ? "shadow-xl" : "shadow-md"
           )}
-          style={{ backgroundColor: '#CC6E37' }}
+          style={{ backgroundColor: '#0846BC' }}
         >
           {/* Logo */}
           <motion.div
@@ -279,10 +279,10 @@ export function Navigation() {
             className="flex items-center text-white"
           >
             <Link to="/" className="flex items-center gap-3 group">
-              <img src={logoSrc} alt="UstaadOnCall" className="h-12 w-auto md:h-14 object-contain shrink-0" />
+              <img src={logoSrc} alt="ThoseJobs" className="h-12 w-auto md:h-14 object-contain shrink-0" />
               <div className="flex flex-col">
-                <span className="font-bold text-2xl text-white">UstaadOnCall</span>
-                <span className="text-[10px] text-white/70 font-medium -mt-1 tracking-wide">Trusted Ustaads Near You</span>
+                <span className="font-bold text-2xl text-white">ThoseJobs</span>
+                <span className="text-[10px] text-white/70 font-medium -mt-1 tracking-wide">Trusted Experts Near You</span>
               </div>
             </Link>
           </motion.div>
@@ -371,7 +371,7 @@ export function Navigation() {
                 </motion.div>
               )}
               
-              {/* Show Provider Login only if not logged in as provider AND not logged in as both */}
+              {/* Show Worker Login only if not logged in as provider AND not logged in as both */}
               {currentAccountType !== 'provider' && !isLoggedInAsBoth() && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
@@ -381,7 +381,7 @@ export function Navigation() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button variant="ghost" size="sm" asChild className="rounded-full text-white/80 hover:text-white font-light">
-                    <Link to="/provider-login">{t("Provider Login")}</Link>
+                    <Link to="/provider-login">{t("Worker Login")}</Link>
                   </Button>
                 </motion.div>
               )}
@@ -412,11 +412,11 @@ export function Navigation() {
                 >
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md"
-                      style={{ background: 'conic-gradient(from 180deg at 50% 50%, hsl(22,65%,45%), hsl(22,65%,55%), hsl(22,65%,45%))' }}
+                      style={{ background: 'conic-gradient(from 180deg at 50% 50%, #0846BC, #0a5cd4, #0846BC)' }}
                     >
                       <User className="w-5 h-5 text-white" />
                     </div>
-                    <div className="absolute -inset-1 bg-gradient-to-r from-[hsl(22_65%_45%/0.25)] to-[hsl(22_65%_50%/0.25)] rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#0846BC/0.25] to-[#0a5cd4/0.25] rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   </div>
                   <div className="flex flex-col items-start">
                     <span className="text-sm font-semibold text-white">
@@ -449,7 +449,7 @@ export function Navigation() {
                     >
                       <div className="p-6 border-b border-border/60 bg-gradient-to-r from-secondary to-secondary/70">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-[hsl(22_65%_45%)] rounded-full flex items-center justify-center">
+                          <div className="w-12 h-12 bg-tj-blue rounded-full flex items-center justify-center">
                             <User className="w-6 h-6 text-white" />
                           </div>
                           <div>
@@ -647,18 +647,18 @@ export function Navigation() {
                     </Button>
                   )}
                   
-                  {/* Show Provider Login only if not logged in as provider AND not logged in as both */}
+                  {/* Show Worker Login only if not logged in as provider AND not logged in as both */}
                   {currentAccountType !== 'provider' && !isLoggedInAsBoth() && (
                     <Button variant="outline" size="sm" asChild className="w-full rounded-xl border-border hover:border-border text-primary hover:text-primary hover:bg-secondary">
                       <Link to="/provider-login" onClick={() => setIsOpen(false)}>
-                        {t("Provider Login")}
+                        {t("Worker Login")}
                       </Link>
                     </Button>
                   )}
                   
                   {/* Show Become Provider only if not logged in as provider AND not logged in as both */}
                   {currentAccountType !== 'provider' && !isLoggedInAsBoth() && (
-                    <Button size="sm" asChild className="w-full rounded-xl bg-[hsl(22_65%_45%)] hover:bg-[hsl(22_65%_40%)] shadow-lg text-white">
+                    <Button size="sm" asChild className="w-full rounded-xl bg-tj-blue hover:bg-[#073a9e] shadow-lg text-white">
                       <Link to="/become-provider" onClick={() => setIsOpen(false)}>
                         {t("Become Provider")}
                       </Link>
@@ -671,7 +671,7 @@ export function Navigation() {
                   <div className="border-t border-border pt-4 mt-4">
                     <div className="px-4 py-3 bg-gradient-to-r from-secondary to-secondary/70">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[hsl(22_65%_45%)] rounded-full flex items-center justify-center">
+                        <div className="w-10 h-10 bg-tj-blue rounded-full flex items-center justify-center">
                           <User className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
